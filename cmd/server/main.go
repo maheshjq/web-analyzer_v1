@@ -14,6 +14,17 @@ import (
 	"github.com/rs/cors"
 )
 
+// @title Web Page Analyzer API
+// @version 1.0
+// @description API for analyzing web pages, extracting HTML version, title, headings, links, and detecting login forms.
+
+// @contact.name Web Analyzer Team
+
+// @host localhost:8080
+// @BasePath /api
+
+// @schemes http
+
 func main() {
 	// Create router
 	r := mux.NewRouter()

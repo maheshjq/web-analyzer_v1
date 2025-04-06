@@ -1,4 +1,4 @@
-module github.com/mahesh/web-analyzer
+module github.com/maheshjq/web-analyzer_v1
 
 go 1.21
 

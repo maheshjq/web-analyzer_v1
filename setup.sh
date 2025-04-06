@@ -9,7 +9,7 @@ mkdir -p web/build
 
 # Create go.mod file
 cat > go.mod << 'EOF'
-module github.com/mahesh/web-analyzer
+module github.com/maheshjq/web-analyzer_v1
 
 go 1.21
 
