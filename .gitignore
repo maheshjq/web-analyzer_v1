@@ -1,0 +1,41 @@
+# Binary files
+/web-analyzer
+/cmd/server/server
+
+# Environment files
+.env
+
+# Dependency directories
+/vendor/
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Build outputs
+/bin/
+/dist/
+
+# React frontend build
+/web/node_modules/
+/web/build/
+/web/.env
+/web/.env.local
+/web/.env.development
+/web/.env.test
+/web/.env.production
