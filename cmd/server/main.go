@@ -12,6 +12,11 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
+	httpSwagger "github.com/swaggo/http-swagger"
+	
+	"github.com/maheshjq/web-analyzer_v1/internal/api"
+	// Import swagger docs when they are generated
+	// _ "github.com/maheshjq/web-analyzer_v1/docs"
 )
 
 // @title Web Page Analyzer API
@@ -21,29 +26,36 @@ import (
 // @contact.name Web Analyzer Team
 
 // @host localhost:8080
-// @BasePath /api
-
+// @BasePath /
 // @schemes http
 
 func main() {
 	// Create router
 	r := mux.NewRouter()
 	
-	// API endpoints (you'll implement these later)
+	// API endpoints
 	apiRouter := r.PathPrefix("/api").Subrouter()
-	apiRouter.HandleFunc("/analyze", analyzeHandler).Methods("POST")
-	apiRouter.HandleFunc("/health", healthCheckHandler).Methods("GET")
+	apiRouter.HandleFunc("/analyze", api.AnalyzeHandler).Methods("POST")
+	apiRouter.HandleFunc("/health", api.HealthCheckHandler).Methods("GET")
+	
+	// Setup Swagger
+	// The URL should be the same as the swagger docs
+	r.PathPrefix("/swagger/").Handler(httpSwagger.Handler(
+		httpSwagger.URL("/swagger/doc.json"),
+		httpSwagger.DeepLinking(true),
+		httpSwagger.DocExpansion("none"),
+	))
 	
 	// Serve static files from the React build folder
 	r.PathPrefix("/").Handler(http.FileServer(http.Dir("./web/build")))
 	
 	// Wrap router with CORS middleware
-	handler := cors.Default().Handler(r)
+	corsHandler := cors.Default().Handler(r)
 	
 	// Create HTTP server
 	srv := &http.Server{
 		Addr:         ":8080",
-		Handler:      handler,
+		Handler:      corsHandler,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  120 * time.Second,
@@ -52,6 +64,7 @@ func main() {
 	// Start server in a goroutine
 	go func() {
 		fmt.Println("Server starting on :8080")
+		fmt.Println("Swagger UI available at http://localhost:8080/swagger/")
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Server error: %v", err)
 		}
@@ -67,16 +80,4 @@ func main() {
 	defer cancel()
 	srv.Shutdown(ctx)
 	fmt.Println("Server gracefully stopped")
-}
-
-// Placeholder API handlers (implement these with your analyzer logic)
-func analyzeHandler(w http.ResponseWriter, r *http.Request) {
-	// Your analyze implementation will go here
-	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(w, `{"message": "Analysis endpoint placeholder"}`)
-}
-
-func healthCheckHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(w, `{"status": "ok"}`)
 }
