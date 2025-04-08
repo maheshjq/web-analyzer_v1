@@ -1,69 +1,5 @@
 basePath: /
 definitions:
-  api.AnalysisRequest:
-    properties:
-      url:
-        example: https://example.com
-        type: string
-    type: object
-  api.AnalysisResponse:
-    properties:
-      containsLoginForm:
-        example: false
-        type: boolean
-      headings:
-        $ref: '#/definitions/api.HeadingCount'
-      htmlVersion:
-        example: HTML5
-        type: string
-      links:
-        $ref: '#/definitions/api.LinkAnalysis'
-      title:
-        example: Example Domain
-        type: string
-    type: object
-  api.ErrorResponse:
-    properties:
-      message:
-        example: 'Failed to analyze URL: HTTP error 404 Not Found'
-        type: string
-      statusCode:
-        example: 502
-        type: integer
-    type: object
-  api.HeadingCount:
-    properties:
-      h1:
-        example: 1
-        type: integer
-      h2:
-        example: 2
-        type: integer
-      h3:
-        example: 3
-        type: integer
-      h4:
-        example: 0
-        type: integer
-      h5:
-        example: 0
-        type: integer
-      h6:
-        example: 0
-        type: integer
-    type: object
-  api.LinkAnalysis:
-    properties:
-      external:
-        example: 3
-        type: integer
-      inaccessible:
-        example: 1
-        type: integer
-      internal:
-        example: 5
-        type: integer
-    type: object
   models.AnalysisRequest:
     properties:
       url:
@@ -137,13 +73,12 @@ info:
   title: Web Page Analyzer API
   version: "1.0"
 paths:
-  /analyze:
+  /api/analyze:
     post:
       consumes:
       - application/json
       description: Fetches and analyzes a web page by URL, returning information about
         its structure and content
-      operationId: analyze-web-page
       parameters:
       - description: URL to analyze
         in: body
@@ -167,35 +102,6 @@ paths:
           schema:
             $ref: '#/definitions/models.ErrorResponse'
       summary: Analyze a web page
-  /api/analyze:
-    post:
-      consumes:
-      - application/json
-      description: Fetches and analyzes a web page by URL, returning information about
-        its structure and content
-      parameters:
-      - description: URL to analyze
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/api.AnalysisRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Successful analysis
-          schema:
-            $ref: '#/definitions/api.AnalysisResponse'
-        "400":
-          description: Bad request (invalid URL format)
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "502":
-          description: Failed to fetch or analyze the URL
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: Analyze a web page
       tags:
       - analysis
   /api/health:
@@ -213,20 +119,6 @@ paths:
       summary: Health check
       tags:
       - health
-  /health:
-    get:
-      description: Returns the health status of the API
-      operationId: health-check
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Service is healthy
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Health check
 schemes:
 - http
 swagger: "2.0"
