@@ -10,7 +10,7 @@ package api
 
 // @scheme http
 
-// AnalyzeHandler godoc
+// AnalyzeHandlerSwagger godoc
 // @Summary Analyze a web page
 // @Description Fetches and analyzes a web page by URL, returning information about its structure and content
 // @ID analyze-web-page
@@ -21,19 +21,19 @@ package api
 // @Failure 400 {object} models.ErrorResponse "Bad request (invalid URL format)"
 // @Failure 502 {object} models.ErrorResponse "Failed to fetch or analyze the URL"
 // @Router /analyze [post]
-func (h *Handler) AnalyzeHandlerSwagger() {
+func AnalyzeHandlerSwagger() {
 	// This function exists only for Swagger documentation
 	// The actual implementation is in AnalyzeHandler
 }
 
-// HealthCheckHandler godoc
+// HealthCheckHandlerSwagger godoc
 // @Summary Health check
 // @Description Returns the health status of the API
 // @ID health-check
 // @Produce json
 // @Success 200 {object} map[string]string "Service is healthy"
 // @Router /health [get]
-func (h *Handler) HealthCheckHandlerSwagger() {
+func HealthCheckHandlerSwagger() {
 	// This function exists only for Swagger documentation
 	// The actual implementation is in HealthCheckHandler
 }

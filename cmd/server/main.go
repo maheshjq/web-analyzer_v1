@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -15,8 +16,8 @@ import (
 	httpSwagger "github.com/swaggo/http-swagger"
 	
 	"github.com/maheshjq/web-analyzer_v1/internal/api"
-	// Import swagger docs when they are generated
-	// _ "github.com/maheshjq/web-analyzer_v1/docs"
+	// Uncomment when you have generated swagger docs
+	 _ "github.com/maheshjq/web-analyzer_v1/docs" 
 )
 
 // @title Web Page Analyzer API
@@ -30,41 +31,61 @@ import (
 // @schemes http
 
 func main() {
+	// Setup logger
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}))
+	
 	// Create router
 	r := mux.NewRouter()
 	
 	// API endpoints
 	apiRouter := r.PathPrefix("/api").Subrouter()
-	apiRouter.HandleFunc("/analyze", api.AnalyzeHandler).Methods("POST")
+	apiRouter.HandleFunc("/analyze", api.AnalyzeHandler).Methods("POST", "OPTIONS")
 	apiRouter.HandleFunc("/health", api.HealthCheckHandler).Methods("GET")
 	
 	// Setup Swagger
-	// The URL should be the same as the swagger docs
 	r.PathPrefix("/swagger/").Handler(httpSwagger.Handler(
 		httpSwagger.URL("/swagger/doc.json"),
 		httpSwagger.DeepLinking(true),
 		httpSwagger.DocExpansion("none"),
 	))
 	
-	// Serve static files from the React build folder
-	r.PathPrefix("/").Handler(http.FileServer(http.Dir("./web/build")))
+	// Serve static files from the React build folder if the directory exists
+	spa := http.FileServer(http.Dir("./web/build"))
+	r.PathPrefix("/").Handler(spa)
+	
+	// Add middleware
+	r.Use(api.LoggingMiddleware(logger))
+	r.Use(api.RecoverMiddleware(logger))
 	
 	// Wrap router with CORS middleware
-	corsHandler := cors.Default().Handler(r)
+	corsHandler := cors.New(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
+		AllowedHeaders:   []string{"Content-Type", "Authorization"},
+		AllowCredentials: true,
+	}).Handler(r)
+	
+	// Get port from environment variable or use default
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
 	
 	// Create HTTP server
 	srv := &http.Server{
-		Addr:         ":8080",
+		Addr:         ":" + port,
 		Handler:      corsHandler,
-		ReadTimeout:  10 * time.Second,
+		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  120 * time.Second,
 	}
 	
 	// Start server in a goroutine
 	go func() {
-		fmt.Println("Server starting on :8080")
-		fmt.Println("Swagger UI available at http://localhost:8080/swagger/")
+		fmt.Printf("Server starting on :%s\n", port)
+		fmt.Println("Swagger UI available at http://localhost:" + port + "/swagger/")
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Server error: %v", err)
 		}
