@@ -1,8 +1,15 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
+	"net/url"
+	"strings"
+
+	"github.com/maheshjq/web-analyzer_v1/internal/analyzer"
+	"github.com/maheshjq/web-analyzer_v1/internal/models"
 )
 
 // AnalyzeHandler godoc
@@ -11,13 +18,55 @@ import (
 // @Tags analysis
 // @Accept json
 // @Produce json
-// @Param request body AnalysisRequest true "URL to analyze"
-// @Success 200 {object} AnalysisResponse "Successful analysis"
-// @Failure 400 {object} ErrorResponse "Bad request (invalid URL format)"
-// @Failure 502 {object} ErrorResponse "Failed to fetch or analyze the URL"
+// @Param request body models.AnalysisRequest true "URL to analyze"
+// @Success 200 {object} models.AnalysisResponse "Successful analysis"
+// @Failure 400 {object} models.ErrorResponse "Bad request (invalid URL format)"
+// @Failure 502 {object} models.ErrorResponse "Failed to fetch or analyze the URL"
 // @Router /api/analyze [post]
 func AnalyzeHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "{\"status\":\"ok\"}")
+	// Set content type
+	w.Header().Set("Content-Type", "application/json")
+
+	// Parse the request body
+	var req models.AnalysisRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		sendErrorResponse(w, http.StatusBadRequest, "Invalid request body: "+err.Error())
+		return
+	}
+
+	// Validate URL format
+	if req.URL == "" {
+		sendErrorResponse(w, http.StatusBadRequest, "URL is required")
+		return
+	}
+
+	// Ensure URL has a scheme
+	if !strings.HasPrefix(req.URL, "http://") && !strings.HasPrefix(req.URL, "https://") {
+		req.URL = "https://" + req.URL
+	}
+
+	// Validate URL
+	_, err = url.ParseRequestURI(req.URL)
+	if err != nil {
+		sendErrorResponse(w, http.StatusBadRequest, "Invalid URL format: "+err.Error())
+		return
+	}
+
+	// Create analyzer instance
+	analyzerInstance := analyzer.NewAnalyzer()
+
+	// Analyze the URL
+	analysisResult, err := analyzerInstance.Analyze(req.URL)
+	if err != nil {
+		log.Printf("Error analyzing URL %s: %v", req.URL, err)
+		sendErrorResponse(w, http.StatusBadGateway, fmt.Sprintf("Failed to analyze URL: %v", err))
+		return
+	}
+
+	// Send successful response
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(analysisResult)
 }
 
 // HealthCheckHandler godoc
@@ -32,39 +81,11 @@ func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, `{"status": "ok"}`)
 }
 
-// AnalysisRequest represents the request to analyze a webpage
-type AnalysisRequest struct {
-	URL string `json:"url" example:"https://example.com"`
-}
-
-// AnalysisResponse represents the result of the analysis
-type AnalysisResponse struct {
-	HTMLVersion      string        `json:"htmlVersion" example:"HTML5"`
-	Title            string        `json:"title" example:"Example Domain"`
-	Headings         HeadingCount  `json:"headings"`
-	Links            LinkAnalysis  `json:"links"`
-	ContainsLoginForm bool          `json:"containsLoginForm" example:"false"`
-}
-
-// HeadingCount represents the count of different heading levels
-type HeadingCount struct {
-	H1 int `json:"h1" example:"1"`
-	H2 int `json:"h2" example:"2"`
-	H3 int `json:"h3" example:"3"`
-	H4 int `json:"h4" example:"0"`
-	H5 int `json:"h5" example:"0"`
-	H6 int `json:"h6" example:"0"`
-}
-
-// LinkAnalysis represents the analysis of links on the page
-type LinkAnalysis struct {
-	Internal     int `json:"internal" example:"5"`
-	External     int `json:"external" example:"3"`
-	Inaccessible int `json:"inaccessible" example:"1"`
-}
-
-// ErrorResponse represents an error response
-type ErrorResponse struct {
-	StatusCode int    `json:"statusCode" example:"502"`
-	Message    string `json:"message" example:"Failed to analyze URL: HTTP error 404 Not Found"`
+// sendErrorResponse sends an error response with the given status code and message
+func sendErrorResponse(w http.ResponseWriter, statusCode int, message string) {
+	w.WriteHeader(statusCode)
+	json.NewEncoder(w).Encode(models.ErrorResponse{
+		StatusCode: statusCode,
+		Message:    message,
+	})
 }

@@ -1,195 +1,221 @@
 # Web Page Analyzer
 
-A web application for analyzing web pages, providing information about HTML version, page title, headings, links, and login forms.
+A web application that analyzes web pages and provides detailed information about their structure and content.
 
-## Project Overview
 
-This application consists of a Go backend and a React frontend that allows users to analyze web pages by entering a URL. The analysis includes:
+## Features
 
-- HTML version detection
-- Page title extraction
-- Heading count by level (h1-h6)
-- Internal and external link count
-- Detection of inaccessible links
-- Login form detection
+- **HTML Version Detection**: Identifies the HTML version used (HTML5, HTML4.01, XHTML, etc.)
+- **Page Title Extraction**: Retrieves the title of the analyzed page
+- **Heading Analysis**: Counts headings by level (h1-h6)
+- **Link Analysis**: Categorizes links as internal or external and identifies inaccessible links
+- **Login Form Detection**: Determines if the page contains a login form
+- **Modern, Responsive UI**: Clean interface built with React and Tailwind CSS
+- **API Documentation**: Interactive Swagger documentation for the API endpoints
+- **Dockerized Deployment**: Easy containerized deployment with Docker and docker-compose
 
-## Technologies Used
+## Technology Stack
 
 ### Backend
-- Go 1.21
-- Gorilla Mux (HTTP router)
-- golang.org/x/net/html (HTML parsing)
-- log/slog (Structured logging)
+- Go (Golang) 1.21+
+- Gorilla Mux for routing
+- Swagger for API documentation
+- Structured logging with slog
+- Graceful shutdown handling
+- Concurrent link processing
 
 ### Frontend
 - React 18
 - Tailwind CSS
-- Axios (HTTP requests)
+- Axios for API communication
+- Responsive design
 
-### DevOps
-- Docker for containerization
-- Make for automation
+## Getting Started
 
-## Prerequisites
-
+### Prerequisites
 - Go 1.21 or later
-- Node.js 18 or later (for frontend development)
-- Docker (optional, for containerization)
+- Node.js 18 or later
+- npm 9 or later
+- Docker and docker-compose (optional, for containerized deployment)
 
-## Setup Instructions
+### Installation and Setup
 
-### Manual Setup
+#### Clone the repository
+```bash
+git clone https://github.com/yourusername/web-analyzer.git
+cd web-analyzer
+```
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/web-analyzer.git
-   cd web-analyzer
-   ```
+#### Run with Make (Recommended)
 
-2. **Build and run the backend**
-   ```bash
-   go mod tidy
-   go run cmd/server/main.go
-   ```
+The project includes a Makefile with common commands:
 
-3. **Build the frontend**
-   ```bash
-   cd web
-   npm install
-   npm run build
-   cd ..
-   ```
+```bash
+# Install dependencies and build both frontend and backend
+make build
 
-4. **Access the application**
-   Open your browser and navigate to `http://localhost:8080`
+# Run the application (builds first if necessary)
+make run
 
-### Docker Setup
+# Run backend in development mode
+make dev
 
-1. **Build the Docker image**
-   ```bash
-   docker build -t web-analyzer .
-   ```
+# Run frontend in development mode (in a separate terminal)
+make dev-frontend
 
-2. **Run the container**
-   ```bash
-   docker run -p 8080:8080 web-analyzer
-   ```
+# Run tests
+make test
 
-3. **Access the application**
-   Open your browser and navigate to `http://localhost:8080`
+# Clean build artifacts
+make clean
+```
 
-## Usage
+#### Manual Setup
 
-1. Enter a valid URL in the input field
-2. Click "Analyze" to process the URL
-3. View the analysis results displayed on the page
+If you prefer to run commands manually:
+
+1. Build the frontend:
+```bash
+cd web
+npm install
+npm run build
+cd ..
+```
+
+2. Build and run the backend:
+```bash
+go mod tidy
+go build -o bin/web-analyzer ./cmd/server
+./bin/web-analyzer
+```
+
+#### Docker Setup
+
+```bash
+# Build and run with docker-compose
+docker-compose up --build
+```
+
+### Accessing the Application
+
+- Web Interface: [http://localhost:8080](http://localhost:8080)
+- Swagger API Documentation: [http://localhost:8080/swagger/](http://localhost:8080/swagger/)
+- API Endpoint: [http://localhost:8080/api/analyze](http://localhost:8080/api/analyze)
 
 ## API Documentation
 
 ### POST /api/analyze
-Analyzes a web page.
 
-**Request Body:**
+Analyzes a web page by URL.
+
+**Request:**
 ```json
 {
   "url": "https://example.com"
 }
 ```
 
-**Success Response (200 OK):**
+**Response:**
 ```json
 {
   "htmlVersion": "HTML5",
-  "title": "Example Page",
+  "title": "Example Domain",
   "headings": {
     "h1": 1,
-    "h2": 3,
-    "h3": 5,
+    "h2": 2,
+    "h3": 0,
     "h4": 0,
     "h5": 0,
     "h6": 0
   },
   "links": {
-    "internal": 10,
-    "external": 5,
+    "internal": 5,
+    "external": 3,
     "inaccessible": 1
   },
-  "containsLoginForm": true
-}
-```
-
-**Error Response (4xx/5xx):**
-```json
-{
-  "statusCode": 502,
-  "message": "Failed to analyze URL: HTTP error: 404 Not Found"
+  "containsLoginForm": false
 }
 ```
 
 ### GET /api/health
-Health check endpoint.
 
-**Success Response (200 OK):**
+Health check endpoint to verify the API is running.
+
+**Response:**
 ```json
 {
   "status": "ok"
 }
 ```
 
+## Design Decisions and Implementation Details
+
+### HTML Version Detection
+The application detects HTML versions by examining:
+1. DOCTYPE declarations
+2. Presence of HTML5-specific elements (for pages without a DOCTYPE)
+
+### Link Classification
+- **Internal Links**: Same domain or relative URLs
+- **External Links**: Different domains
+- **Accessibility**: Links are checked for accessibility (2xx/3xx status codes)
+
+### Login Form Detection
+Login forms are detected through:
+- Form attributes containing "login", "signin", etc.
+- Presence of password input fields
+
+### Concurrency
+The application uses Go's concurrency features:
+- Goroutines for parallel link accessibility checking
+- Mutex for thread-safe updates
+- WaitGroups for synchronization
+
 ## Testing
 
-To run the unit tests:
+The project includes unit tests for key components:
+- HTML version detection
+- Title extraction
+- Heading counting
+- Link classification
+- Login form detection
+
+To run tests:
 ```bash
 go test ./...
 ```
 
-## Design Decisions and Assumptions
+## Challenges and Solutions
 
-1. **HTML Version Detection**: We detect HTML versions based on the DOCTYPE declaration. If no DOCTYPE is found, we attempt to guess the version based on the presence of HTML5-specific elements.
+- **Link Accessibility Checking**: Implemented concurrent checking with short timeouts to avoid blocking the main analysis.
+- **HTML Parsing**: Used golang.org/x/net/html library for reliable HTML parsing regardless of malformed content.
+- **Frontend-Backend Integration**: Used structured responses and proper error handling to ensure smooth communication.
 
-2. **Link Classification**:
-   - Internal links: Links that point to the same domain or relative links
-   - External links: Links that point to different domains
-   - Inaccessible links: Links that return HTTP status codes other than 2xx or 3xx
+## Future Improvements
 
-3. **Login Form Detection**: We detect login forms by looking for:
-   - Forms with "login", "signin", etc. in their ID, class, or action attributes
-   - Forms containing password input fields
+- Caching of analysis results to improve performance
+- More detailed link analysis with metadata
+- Performance metrics for page load times
+- SEO analysis features
+- Accessibility evaluation
+- Export functionality for analysis results
 
-4. **Concurrency**: We use goroutines and waitgroups to check link accessibility in parallel, improving performance when analyzing pages with many links.
+## Contributing
 
-5. **Error Handling**: Detailed error messages are provided when a URL cannot be accessed, including the HTTP status code and a description.
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-## Challenges Faced
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-1. **HTML Parsing**: Determining the HTML version accurately was challenging, especially for pages without proper DOCTYPE declarations.
+## License
 
-2. **Link Accessibility**: Checking all links for accessibility could be resource-intensive and time-consuming. We implemented concurrency to mitigate this.
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-3. **Login Form Detection**: Login forms can vary widely, so we used a combination of heuristics to detect them.
+## Acknowledgments
 
-## Possible Improvements
-
-1. **Caching**: Implement caching to avoid re-analyzing the same URLs repeatedly.
-
-2. **Pagination**: Add pagination for large analysis results, especially for pages with many links.
-
-3. **Authentication**: Add user authentication to allow users to save and review their analysis history.
-
-4. **Advanced Analysis Options**:
-   - SEO analysis
-   - Performance metrics
-   - Accessibility evaluation
-   - Mobile-friendliness check
-
-5. **Scheduled Analysis**: Allow users to set up scheduled analysis for monitoring websites over time.
-
-6. **API Rate Limiting**: Implement rate limiting to prevent abuse of the API.
-
-7. **Export Functionality**: Allow users to export analysis results in different formats (CSV, PDF, etc.).
-
-8. **Detailed Link Analysis**: Provide more detailed information about links, such as anchor text, target, etc.
-
-9. **Security Enhancements**: Implement additional security measures such as input validation, CSRF protection, etc.
-
-10. **Metrics and Monitoring**: Add Prometheus metrics for monitoring application performance.
+- The Go team for the excellent net/html package
+- The React and Tailwind CSS communities for building great frontend tools
+- All contributors and testers who have helped improve this project
