@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import SavedBookmarks from './components/SavedBookmarks';
+import AnalysisVisualization from './components/AnalysisVisualization';
 import axios from 'axios';
 
 // API service function - moved inline to avoid dependency issues
@@ -466,7 +468,7 @@ function App() {
             </div>
           </div>
         )}
-
+        <SavedBookmarks onSelectUrl={handleAnalyzeUrl} />
         <EnhancedAnalysisForm onSubmit={handleAnalyzeUrl} isLoading={isLoading} />
 
         <EnhancedErrorDisplay error={error} />
@@ -485,6 +487,7 @@ function App() {
                 </div>
               )}
               <EnhancedAnalysisResult result={result} />
+              {result && <AnalysisVisualization result={result} />}
             </>
           )
         )}
