@@ -12,16 +12,28 @@ import (
 	"github.com/maheshjq/web-analyzer_v1/internal/models"
 )
 
-// AnalyzeHandler godoc
+// AnalyzeHandler handles POST requests to the /api/analyze endpoint.
+// It takes a JSON body with a URL and digs into the web page to pull out useful details about its structure and content.
+//
 // @Summary Analyze a web page
-// @Description Fetches and analyzes a web page by URL, returning information about its structure and content
+// @Description
+// This endpoint analyzes a web page based on the URL you provide and returns a breakdown of its key features, including:
+// - HTML version (like HTML5 or XHTML 1.0)
+// - Page title
+// - Counts of headings (h1 through h6)
+// - Link analysis:
+//   - Number of internal links
+//   - Number of external links
+//   - Number of inaccessible links
+//
+// - Whether there's a login form on the page
 // @Tags analysis
 // @Accept json
 // @Produce json
 // @Param request body models.AnalysisRequest true "URL to analyze"
 // @Success 200 {object} models.AnalysisResponse "Successful analysis"
-// @Failure 400 {object} models.ErrorResponse "Bad request (invalid URL format)"
-// @Failure 502 {object} models.ErrorResponse "Failed to fetch or analyze the URL"
+// @Failure 400 {object} models.ErrorResponse "Invalid URL format or missing URL"
+// @Failure 502 {object} models.ErrorResponse "Unable to fetch the URL or an error occurred during analysis"
 // @Router /api/analyze [post]
 func AnalyzeHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")

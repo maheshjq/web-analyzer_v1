@@ -1,11 +1,13 @@
+/* eslint-disable no-throw-literal */
 import axios from 'axios';
+
 
 const API_URL = process.env.REACT_APP_API_URL || '/api';
 
 /**
  * Analyze web page URL
- * @param {string} url - url
- * @returns a promise
+ * @param {string} url - url need send/analys
+ * @returns
  */
 export const analyzeWebPage = async (url) => {
   try {
@@ -17,7 +19,7 @@ export const analyzeWebPage = async (url) => {
     } else if (error.request) {
       throw {
         statusCode: 503,
-        message: 'No response from server. Please try again later.'
+        message: 'No response got from server. Please try again later.'
       };
     } else {
       throw {
