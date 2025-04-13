@@ -15,7 +15,6 @@ func NewHandler(logger *slog.Logger) *Handler {
 	}
 }
 
-// sendError sends an error response with the given status code and message
 func (h *Handler) sendError(w http.ResponseWriter, statusCode int, message string) {
 	w.WriteHeader(statusCode)
 	w.Write([]byte(`{"statusCode": ` + string(rune(statusCode)) + `, "message": "` + message + `"}`))

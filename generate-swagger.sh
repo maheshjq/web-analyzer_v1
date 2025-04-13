@@ -2,12 +2,11 @@
 
 # Check if swag is installed
 if ! command -v swag &> /dev/null; then
-    echo "Installing swag..."
+    echo "Installing swag!"
     go install github.com/swaggo/swag/cmd/swag@latest
 fi
 
-# Generate Swagger docs
-echo "Generating Swagger documentation..."
+echo "Generating Swagger doc!"
 swag init -g cmd/server/main.go -o ./docs
 
 echo "Swagger documentation generated in docs/ directory"

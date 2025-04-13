@@ -38,7 +38,6 @@ func AnalyzeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Ensure URL has a scheme
 	if !strings.HasPrefix(req.URL, "http://") && !strings.HasPrefix(req.URL, "https://") {
 		req.URL = "https://" + req.URL
 	}
@@ -51,7 +50,7 @@ func AnalyzeHandler(w http.ResponseWriter, r *http.Request) {
 
 	analyzerInstance := analyzer.NewAnalyzer()
 
-	// Analyze the URL
+	// Analyze the url here
 	analysisResult, err := analyzerInstance.Analyze(req.URL)
 	if err != nil {
 		log.Printf("Error analyzing URL %s: %v", req.URL, err)
