@@ -1,10 +1,9 @@
-version: '3.8'
-
 services:
   web-analyzer:
     build:
       context: .
       dockerfile: Dockerfile
+      # dockerfile: Dockerfile.simplified
     ports:
       - "8080:8080"
     environment:
@@ -18,8 +17,3 @@ services:
       start_period: 15s
     volumes:
       - ./web/build:/app/web/build:ro
-
-  # You could easily add additional services here, such as:
-  # - A reverse proxy like Nginx
-  # - A caching layer like Redis
-  # - A database if you extend the application to store results
