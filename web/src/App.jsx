@@ -53,7 +53,7 @@ function App() {
       <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-6 p-6">
           <p className="text-gray-700">
-            Hey, Pls enter a URL below to analyze the HTML structure/elements, links,.. ect
+            Enter a URL below to analyze the HTML structure/elements, links,.. ect
           </p>
         </div>
         
