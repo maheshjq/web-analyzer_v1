@@ -24,10 +24,8 @@ import (
 // @Failure 502 {object} models.ErrorResponse "Failed to fetch or analyze the URL"
 // @Router /api/analyze [post]
 func AnalyzeHandler(w http.ResponseWriter, r *http.Request) {
-	// Set content type
 	w.Header().Set("Content-Type", "application/json")
 
-	// Parse the request body
 	var req models.AnalysisRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
@@ -35,7 +33,6 @@ func AnalyzeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate URL format
 	if req.URL == "" {
 		sendErrorResponse(w, http.StatusBadRequest, "URL is required")
 		return
@@ -46,14 +43,12 @@ func AnalyzeHandler(w http.ResponseWriter, r *http.Request) {
 		req.URL = "https://" + req.URL
 	}
 
-	// Validate URL
 	_, err = url.ParseRequestURI(req.URL)
 	if err != nil {
 		sendErrorResponse(w, http.StatusBadRequest, "Invalid URL format: "+err.Error())
 		return
 	}
 
-	// Create analyzer instance
 	analyzerInstance := analyzer.NewAnalyzer()
 
 	// Analyze the URL
@@ -64,7 +59,6 @@ func AnalyzeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Send successful response
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(analysisResult)
 }
@@ -81,7 +75,6 @@ func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, `{"status": "ok"}`)
 }
 
-// sendErrorResponse sends an error response with the given status code and message
 func sendErrorResponse(w http.ResponseWriter, statusCode int, message string) {
 	w.WriteHeader(statusCode)
 	json.NewEncoder(w).Encode(models.ErrorResponse{
