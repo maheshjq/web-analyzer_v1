@@ -1,14 +1,12 @@
 import React from 'react';
 
 const AnalysisResult = (props) => {
-  // Handle case where props might be missing entirely
   if (!props || !props.result) {
     return null;
   }
 
   const result = props.result;
   
-  // Create default objects for each section to prevent undefined errors
   const headings = {
     h1: 0,
     h2: 0,
@@ -26,7 +24,6 @@ const AnalysisResult = (props) => {
     ...(result.links || {})
   };
 
-  // Use default values for all other properties
   const htmlVersion = result.htmlVersion || 'Unknown';
   const title = result.title || 'No title';
   const containsLoginForm = Boolean(result.containsLoginForm);

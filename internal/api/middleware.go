@@ -11,7 +11,6 @@ func LoggingMiddleware(logger *slog.Logger) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
 
-			// Log request details
 			logger.Info("Request started",
 				"method", r.Method,
 				"path", r.URL.Path,
