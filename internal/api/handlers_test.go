@@ -49,10 +49,10 @@ func TestAnalyzeHandler(t *testing.T) {
 	// Create mock response
 	mockResponse := &models.AnalysisResponse{
 		HTMLVersion:       "HTML5",
-		Title:             "Test Page",
-		Headings:          models.HeadingCount{H1: 1, H2: 2},
-		Links:             models.LinkAnalysis{Internal: 5, External: 3},
-		ContainsLoginForm: true,
+		Title:             "Example Domain",
+		Headings:          models.HeadingCount{H1: 1, H2: 0},
+		Links:             models.LinkAnalysis{Internal: 0, External: 1, Inaccessible: 0},
+		ContainsLoginForm: false,
 	}
 
 	// Set up mock function

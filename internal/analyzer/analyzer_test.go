@@ -498,7 +498,7 @@ func TestDetectLoginForm(t *testing.T) {
 // TestAnalyzeLinks tests the analyzeLinks function
 func TestAnalyzeLinks(t *testing.T) {
 	// Simple test for link extraction and categorization
-	html := `
+	htmlStr := `
 		<html><body>
 			<a href="/">Home</a>
 			<a href="/about">About</a>
@@ -510,7 +510,7 @@ func TestAnalyzeLinks(t *testing.T) {
 		</body></html>
 	`
 
-	doc, err := html.Parse(strings.NewReader(html))
+	doc, err := html.Parse(strings.NewReader(htmlStr))
 	require.NoError(t, err)
 
 	// Create a test client with mocked responses
@@ -533,7 +533,6 @@ func TestAnalyzeLinks(t *testing.T) {
 	result := analyzeLinks(doc, "example.com", client)
 
 	// Check the results
-	// Note: Exact counts can vary based on implementation details
 	assert.GreaterOrEqual(t, result.Internal, 3) // Home, About, Section should be internal
 	assert.GreaterOrEqual(t, result.External, 2) // External and Email should be external
 	assert.Equal(t, 0, result.Inaccessible)      // All links are accessible in our mock
@@ -573,9 +572,8 @@ func (e *timeoutError) Error() string   { return "timeout error" }
 func (e *timeoutError) Timeout() bool   { return true }
 func (e *timeoutError) Temporary() bool { return true }
 
-// TestFindElement tests the findElement function
 func TestFindElement(t *testing.T) {
-	html := `
+	htmlStr := `
 		<html>
 			<head><title>Test</title></head>
 			<body>
@@ -589,7 +587,7 @@ func TestFindElement(t *testing.T) {
 		</html>
 	`
 
-	doc, err := html.Parse(strings.NewReader(html))
+	doc, err := html.Parse(strings.NewReader(htmlStr))
 	require.NoError(t, err)
 
 	// Test for elements that exist
@@ -599,7 +597,7 @@ func TestFindElement(t *testing.T) {
 	assert.True(t, findElement(doc, "section"))
 	assert.True(t, findElement(doc, "footer"))
 
-	// Test for elements that don't exist
+	// Test for elements that don’t exist
 	assert.False(t, findElement(doc, "aside"))
 	assert.False(t, findElement(doc, "canvas"))
 	assert.False(t, findElement(doc, "video"))
