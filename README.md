@@ -1,78 +1,124 @@
 # Web Page Analyzer
 
-A web application that analyzes web pages and provides detailed information about their structure and content.
+A Golang-based web application that analyzes web pages and provides detailed information about their structure and content.
 
+## System Architecture
 
-## Features
+```mermaid
+flowchart LR
+    subgraph Presentation
+        UI[React UI]
+        API[API Layer]
+    end
+    
+    subgraph Core
+        Analyzer[Analyzer Service]
+        Cache[Cache Layer]
+    end
+    
+    subgraph Infrastructure
+        HTML[HTML Processing]
+        HTTP[HTTP Client]
+    end
+    
+    subgraph External
+        WebSites[External Websites]
+    end
+    
+    UI <--> API
+    API <--> Analyzer
+    Analyzer <--> Cache
+    Analyzer <--> HTML
+    Analyzer <--> HTTP
+    HTTP <--> WebSites
+    
+    class UI,API presentation
+    class Analyzer,Cache core
+    class HTML,HTTP infrastructure
+    class WebSites external
+```
 
-- **HTML Version Detection**: Identifies the HTML version used (HTML5, HTML4.01, XHTML, etc.)
-- **Page Title Extraction**: Retrieves the title of the analyzed page
-- **Heading Analysis**: Counts headings by level (h1-h6)
-- **Link Analysis**: Categorizes links as internal or external and identifies inaccessible links
-- **Login Form Detection**: Determines if the page contains a login form
-- **Modern, Responsive UI**: Clean interface built with React and Tailwind CSS
-- **API Documentation**: Interactive Swagger documentation for the API endpoints
-- **Dockerized Deployment**: Easy containerized deployment with Docker and docker-compose
+## Project Overview
+
+This application analyzes web pages by URL and provides the following information:
+- HTML version detection
+- Page title extraction
+- Heading count by level (h1-h6)
+- Classification of links (internal, external, and inaccessible)
+- Login form detection
 
 ## Technology Stack
 
 ### Backend
-- Go (Golang) 1.21+
-- Gorilla Mux for routing
-- Swagger for API documentation
-- Structured logging with slog
-- Graceful shutdown handling
-- Concurrent link processing
+- **Language**: Go 1.21+
+- **Web Framework**: Gorilla Mux for routing
+- **HTML Processing**: golang.org/x/net/html
+- **API Documentation**: Swagger
+- **Logging**: slog for structured logging
+- **Testing**: Go's testing package with testify
 
 ### Frontend
-- React 18
-- Tailwind CSS
-- Axios for API communication
-- Responsive design
+- **Framework**: React 18
+- **Styling**: Tailwind CSS
+- **HTTP Client**: Axios
+- **Form Validation**: Client-side validation with regex
 
-## Getting Started
+### DevOps
+- **Containerization**: Docker
+- **Orchestration**: Docker Compose
+- **Building**: Makefile for automated builds
+- **Testing**: Automated tests with code coverage
+
+## External Dependencies
+
+### Backend
+```
+github.com/gorilla/mux v1.8.1
+github.com/rs/cors v1.10.1
+github.com/stretchr/testify v1.8.4
+github.com/swaggo/http-swagger v1.3.4
+github.com/swaggo/swag v1.16.2
+golang.org/x/net v0.20.0
+```
+
+### Frontend
+```
+react: ^18.2.0
+react-dom: ^18.2.0
+axios: ^1.4.0
+tailwindcss: ^3.3.2
+```
+
+## Installation and Setup
 
 ### Prerequisites
 - Go 1.21 or later
 - Node.js 18 or later
 - npm 9 or later
-- Docker and docker-compose (optional, for containerized deployment)
+- Docker and docker-compose (optional)
 
-### Installation and Setup
+### Quick Start
 
-#### Clone the repository
+#### Using Make (Recommended)
 ```bash
-git clone https://github.com/yourusername/web-analyzer.git
-cd web-analyzer
-```
-
-#### Run with Make (Recommended)
-
-The project includes a Makefile with common commands:
-
-```bash
-# Install dependencies and build both frontend and backend
+# Build both frontend and backend
 make build
 
-# Run the application (builds first if necessary)
+# Run the application
 make run
 
-# Run backend in development mode
-make dev
-
-# Run frontend in development mode (in a separate terminal)
-make dev-frontend
-
-# Run tests
+# Run the tests
 make test
-
-# Clean build artifacts
-make clean
 ```
 
-#### Manual Setup
 
-If you prefer to run commands manually:
+#### Using Docker
+```bash
+# Build and run with docker-compose
+docker-compose up --build
+```
+
+### Manual Setup
 
 1. Build the frontend:
 ```bash
@@ -84,34 +130,29 @@ cd ..
 
 2. Build and run the backend:
 ```bash
-go mod tidy
+go mod download
 go build -o bin/web-analyzer ./cmd/server
 ./bin/web-analyzer
 ```
 
-#### Docker Setup
+## Application Usage
 
-```bash
-# Build and run with docker-compose
-docker-compose up --build
-```
+### Web Interface
+Access the web interface at [http://localhost:8080](http://localhost:8080)
 
-### Accessing the Application
+1. Enter a URL in the input field
+2. Click "Analyze"
+3. View detailed analysis results
 
-- Web Interface: [http://localhost:8080](http://localhost:8080)
-- Swagger API Documentation: [http://localhost:8080/swagger/](http://localhost:8080/swagger/)
-- API Endpoint: [http://localhost:8080/api/analyze](http://localhost:8080/api/analyze)
+### API Endpoints
 
-## API Documentation
-
-### POST /api/analyze
-
+#### POST /api/analyze
 Analyzes a web page by URL.
 
 **Request:**
 ```json
 {
-  "url": "https://example.com"
+  "url": "https://cnn.com"
 }
 ```
 
@@ -137,85 +178,123 @@ Analyzes a web page by URL.
 }
 ```
 
-### GET /api/health
+#### GET /api/health
+Health check endpoint.
 
-Health check endpoint to verify the API is running.
+### API Documentation
+Swagger UI is available at [http://localhost:8080/swagger/](http://localhost:8080/swagger/)
 
-**Response:**
-```json
-{
-  "status": "ok"
-}
+#### Generating Swagger Documentation
+To regenerate the Swagger documentation after API changes:
+
+```bash
+# Install swag if not already installed
+go install github.com/swaggo/swag/cmd/swag@latest
+
+# Generate Swagger docs
+./generate-swagger.sh
+# Or manually:
+swag init -g cmd/server/main.go -o ./docs
 ```
 
-## Design Decisions and Implementation Details
+Once the server is running, access the Swagger UI at:
+- [http://localhost:8080/swagger/index.html](http://localhost:8080/swagger/index.html)
+
+## Core Functionalities
 
 ### HTML Version Detection
-The application detects HTML versions by examining:
-1. DOCTYPE declarations
-2. Presence of HTML5-specific elements (for pages without a DOCTYPE)
+- Analyzes DOCTYPE declarations
+- Checks for HTML5-specific elements when DOCTYPE is missing
 
-### Link Classification
-- **Internal Links**: Same domain or relative URLs
-- **External Links**: Different domains
-- **Accessibility**: Links are checked for accessibility (2xx/3xx status codes)
+### Link Analysis
+- Categorizes links as internal (same domain) or external
+- Concurrent checking of link accessibility with proper timeout handling
+- Reports inaccessible links based on HTTP status codes
 
 ### Login Form Detection
-Login forms are detected through:
-- Form attributes containing "login", "signin", etc.
-- Presence of password input fields
+- Identifies login forms through form attributes and input fields
+- Checks for password fields and login-related identifiers
 
-### Concurrency
-The application uses Go's concurrency features:
-- Goroutines for parallel link accessibility checking
-- Mutex for thread-safe updates
-- WaitGroups for synchronization
+### Error Handling
+- Robust error handling with descriptive messages
+- HTTP status codes mapped to appropriate errors
+- Structured error responses for API consumers
 
-## Testing
+### Performance Optimization
+- Link accessibility checking runs concurrently using goroutines
+- Optional caching layer for frequently analyzed URLs (configurable)
+- Response streaming for large HTML documents
 
-The project includes unit tests for key components:
-- HTML version detection
-- Title extraction
-- Heading counting
-- Link classification
-- Login form detection
+### Logging
+- Structured logging with slog
+- Request/response logging
+- Performance metrics logging
 
-To run tests:
+## Development Tools
+
+### Running Tests
 ```bash
 go test ./...
+
+or
+
+make test
+```
+
+### Development Mode
+```bash
+# Backend
+make dev
+
+# Frontend (in separate terminal)
+make dev-frontend
 ```
 
 ## Challenges and Solutions
 
-- **Link Accessibility Checking**: Implemented concurrent checking with short timeouts to avoid blocking the main analysis.
-- **HTML Parsing**: Used golang.org/x/net/html library for reliable HTML parsing regardless of malformed content.
-- **Frontend-Backend Integration**: Used structured responses and proper error handling to ensure smooth communication.
+### Performance with Large Web Pages
+- **Challenge**: Processing large web pages with many links caused timeouts
+- **Solution**: Implemented concurrent link processing with goroutines and wait groups
+
+### Link Classification
+- **Challenge**: Determining if a link is internal or external with various URL formats
+- **Solution**: Built robust URL parsing with proper handling of relative, fragment and absolute URLs
+
+### HTML Version Detection
+- **Challenge**: No standardized way to detect HTML version in Go libraries
+- **Solution**: Created a custom detection algorithm using DOCTYPE parsing and HTML5 element detection
+
+### Cross-Origin Requests
+- **Challenge**: CORS issues when calling API from frontend
+- **Solution**: Implemented proper CORS middleware with configurable allowed origins
 
 ## Future Improvements
 
-- Caching of analysis results to improve performance
-- More detailed link analysis with metadata
-- Performance metrics for page load times
-- SEO analysis features
-- Accessibility evaluation
-- Export functionality for analysis results
+1. Implement metrics collection with Prometheus
+2. Add pprof integration for performance profiling
+3. Enhance the caching layer with Redis
+4. Add user authentication to save analysis history
+5. Implement batch analysis for multiple URLs
+6. Create export functionality (PDF, CSV)
+7. Implement rate limiting to prevent abuse
 
-## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+## Code Coverage
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+Current test coverage: 70%+ for backend services
 
-## License
+#### Generating Coverage Report
+To generate the code coverage report:
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+```bash
+# Run tests with coverage
+go test -coverprofile=coverage.out ./...
 
-## Acknowledgments
+# Generate HTML coverage report
+go tool cover -html=coverage.out -o coverage.html
 
-- The Go team for the excellent net/html package
-- The React and Tailwind CSS communities for building great frontend tools
-- All contributors and testers who have helped improve this project
+# View the report in your browser
+open coverage.html
+```
+
+See `coverage.html` for detailed coverage report.
