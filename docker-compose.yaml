@@ -3,7 +3,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      # dockerfile: Dockerfile.simplified
     ports:
       - "8080:8080"
     environment:
@@ -17,3 +16,12 @@ services:
       start_period: 15s
     volumes:
       - ./web/build:/app/web/build:ro
+    networks:
+      - app-network
+      - monitoring
+
+networks:
+  app-network:
+    driver: bridge
+  monitoring:
+    external: true

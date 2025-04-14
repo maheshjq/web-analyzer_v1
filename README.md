@@ -200,37 +200,6 @@ swag init -g cmd/server/main.go -o ./docs
 Once the server is running, access the Swagger UI at:
 - [http://localhost:8080/swagger/index.html](http://localhost:8080/swagger/index.html)
 
-## Core Functionalities
-
-### HTML Version Detection
-- Analyzes DOCTYPE declarations
-- Checks for HTML5-specific elements when DOCTYPE is missing
-
-### Link Analysis
-- Categorizes links as internal (same domain) or external
-- Concurrent checking of link accessibility with proper timeout handling
-- Reports inaccessible links based on HTTP status codes
-
-### Login Form Detection
-- Identifies login forms through form attributes and input fields
-- Checks for password fields and login-related identifiers
-
-### Error Handling
-- Robust error handling with descriptive messages
-- HTTP status codes mapped to appropriate errors
-- Structured error responses for API consumers
-
-### Performance Optimization
-- Link accessibility checking runs concurrently using goroutines
-- Optional caching layer for frequently analyzed URLs (configurable)
-- Response streaming for large HTML documents
-
-### Logging
-- Structured logging with slog
-- Request/response logging
-- Performance metrics logging
-
-## Development Tools
 
 ### Running Tests
 ```bash
@@ -298,3 +267,48 @@ open coverage.html
 ```
 
 See `coverage.html` for detailed coverage report.
+
+## Monitoring and Profiling
+
+The Web Page Analyzer includes comprehensive monitoring and profiling tools:
+
+### Prometheus Metrics
+
+The application exposes Prometheus metrics at `/metrics`, tracking:
+
+- Request counts by endpoint and status code
+- Request duration by endpoint
+- Analysis counts and duration
+- Cache hits and misses
+
+To view these metrics:
+1. Access `http://localhost:8080/metrics` in your browser
+2. Set up Prometheus to scrape this endpoint (see Prometheus setup below)
+
+### pprof Profiling
+
+For performance profiling and debugging, pprof endpoints are available at `/debug/pprof/`:
+
+- Memory profiling: `http://localhost:8080/debug/pprof/heap`
+- CPU profiling: `http://localhost:8080/debug/pprof/profile`
+- Goroutine profiling: `http://localhost:8080/debug/pprof/goroutine`
+- Block profiling: `http://localhost:8080/debug/pprof/block`
+
+To use pprof for profiling:
+
+```bash
+# Install graphviz for visualization
+sudo apt-get install graphviz
+
+or for mac
+
+ brew install graphviz
+
+# Collect and view a 30-second CPU profile
+go tool pprof -http=:8081 http://localhost:8080/debug/pprof/profile?seconds=30
+
+# View memory allocations
+go tool pprof -http=:8081 http://localhost:8080/debug/pprof/heap
+
+# View goroutines
+go tool pprof -http=:8081 http://localhost:8080/debug/pprof/goroutine

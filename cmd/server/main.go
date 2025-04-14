@@ -6,6 +6,7 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
+	"net/http/pprof"
 	"os"
 	"os/signal"
 	"syscall"
@@ -16,18 +17,14 @@ import (
 	httpSwagger "github.com/swaggo/http-swagger"
 
 	"github.com/maheshjq/web-analyzer_v1/internal/api"
+	"github.com/maheshjq/web-analyzer_v1/internal/metrics"
+
 	// Uncomment when you have generated swagger docs
 	_ "github.com/maheshjq/web-analyzer_v1/docs"
 )
 
 func init() {
-	// api.NewAnalyzerFunc = func() api.Analyzer {
-	// 	// Create default analyzer
-	// 	defaultAnalyzer := &api.DefaultAnalyzer{}
-
-	// 	// Wrap with caching (cache results for 5 minutes)
-	// 	return api.NewCachedAnalyzer(defaultAnalyzer, 5*time.Minute)
-	// }
+	metrics.Initialize()
 }
 
 // @title Web Page Analyzer API
@@ -42,18 +39,30 @@ func init() {
 
 func main() {
 	api.EnableCaching = true
-	// Setup logger for the app
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelInfo,
 	}))
 
-	// Create the router for handling routes
 	router := mux.NewRouter()
 
-	// Define all API endpoints here
+	// Define all API endpoints
 	apiRouter := router.PathPrefix("/api").Subrouter()
 	apiRouter.HandleFunc("/analyze", api.AnalyzeHandler).Methods("POST", "OPTIONS")
 	apiRouter.HandleFunc("/health", api.HealthCheckHandler).Methods("GET")
+
+	router.Handle("/metrics", metrics.MetricsHandler())
+
+	// Add pprof endpoints
+	// These handlers are used for performance profiling
+	router.HandleFunc("/debug/pprof/", pprof.Index)
+	router.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	router.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	router.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	router.HandleFunc("/debug/pprof/trace", pprof.Trace)
+	router.Handle("/debug/pprof/goroutine", pprof.Handler("goroutine"))
+	router.Handle("/debug/pprof/heap", pprof.Handler("heap"))
+	router.Handle("/debug/pprof/threadcreate", pprof.Handler("threadcreate"))
+	router.Handle("/debug/pprof/block", pprof.Handler("block"))
 
 	// Setup Swagger UI for API docs
 	router.PathPrefix("/swagger/").Handler(httpSwagger.Handler(
@@ -66,7 +75,8 @@ func main() {
 	spa := http.FileServer(http.Dir("./web/build"))
 	router.PathPrefix("/").Handler(spa)
 
-	// Add middleware for logging and recovery
+	// Add middleware for metrics, logging and recovery
+	router.Use(api.MetricsMiddleware)
 	router.Use(api.LoggingMiddleware(logger))
 	router.Use(api.RecoverMiddleware(logger))
 
@@ -97,7 +107,10 @@ func main() {
 	go func() {
 		fmt.Printf("Server starting on :%s\n", port)
 		fmt.Println("Swagger UI available at http://localhost:" + port + "/swagger/")
-		// logger.Info("Server started", "port", port) // Left this commented out from debugging
+		fmt.Println("Prometheus metrics available at http://localhost:" + port + "/metrics")
+		fmt.Println("pprof debugging available at http://localhost:" + port + "/debug/pprof/")
+
+		// logger.Info("Server started", "port", port) // this is for debugging
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Server crashed: %v", err)
 		}

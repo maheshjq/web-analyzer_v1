@@ -1,4 +1,3 @@
-// internal/api/cached_analyzer.go
 package api
 
 import (
@@ -6,16 +5,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/maheshjq/web-analyzer_v1/internal/metrics"
 	"github.com/maheshjq/web-analyzer_v1/internal/models"
 )
 
-// CachedResult holds a cached analysis result and its expiration time
 type CachedResult struct {
 	Result    *models.AnalysisResponse
 	ExpiresAt time.Time
 }
 
-// NewCachedAnalyzer creates a new cached analyzer
 func NewCachedAnalyzer(delegate Analyzer, ttl time.Duration) *CachedAnalyzer {
 	ca := &CachedAnalyzer{
 		delegate: delegate,
@@ -29,7 +27,6 @@ func NewCachedAnalyzer(delegate Analyzer, ttl time.Duration) *CachedAnalyzer {
 	return ca
 }
 
-// Add this method
 func (ca *CachedAnalyzer) cleanupCache(interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
@@ -62,6 +59,9 @@ func (ca *CachedAnalyzer) Analyze(url string) (*models.AnalysisResponse, error) 
 		ca.mu.Lock()
 		ca.cacheHits++
 		ca.mu.Unlock()
+
+		metrics.CacheHitCount.Inc()
+
 		log.Printf("CACHE HIT for %s - returning cached result (%.2f ms)",
 			url, float64(time.Since(start).Microseconds())/1000)
 		return cached.Result, nil
@@ -70,12 +70,20 @@ func (ca *CachedAnalyzer) Analyze(url string) (*models.AnalysisResponse, error) 
 	ca.mu.Lock()
 	ca.cacheMisses++
 	ca.mu.Unlock()
+
+	metrics.CacheMissCount.Inc()
+
 	log.Printf("CACHE MISS for %s - performing analysis", url)
 
 	// Not in cache or expired, call the delegate
 	analysisStart := time.Now()
+
+	metrics.AnalysisCount.Inc()
+
 	result, err := ca.delegate.Analyze(url)
 	analysisDuration := time.Since(analysisStart)
+
+	metrics.AnalysisDuration.Observe(analysisDuration.Seconds())
 
 	if err != nil {
 		log.Printf("ERROR analyzing %s: %v", url, err)
@@ -106,7 +114,6 @@ type CachedAnalyzer struct {
 	cacheMisses int
 }
 
-// Add methods to get metrics
 func (ca *CachedAnalyzer) CacheHits() int {
 	ca.mu.RLock()
 	defer ca.mu.RUnlock()
