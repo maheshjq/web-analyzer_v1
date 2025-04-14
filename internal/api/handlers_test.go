@@ -13,28 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// MockAnalyzerFactory creates a mock analyzer for testing
-func setupMockAnalyzer(fn func(string) (*models.AnalysisResponse, error)) {
-	// Temporarily set EnableCaching to false for tests
-	originalEnableCaching := EnableCaching
-	EnableCaching = false
-
-	// Override singletonAnalyzer for testing
-	singletonAnalyzer = &MockAnalyzer{
-		AnalyzeFn: fn,
-	}
-
-	// Restore original value after test
-	defer func() {
-		EnableCaching = originalEnableCaching
-		singletonAnalyzer = nil // Reset singleton
-	}()
-}
-
-// Add at the top of your handlers_test.go file:
 var mockAnalyzeFunc func(url string) (*models.AnalysisResponse, error)
 
-// Then create a mock analyzer type that uses this function
 type testMockAnalyzer struct{}
 
 func (m *testMockAnalyzer) Analyze(url string) (*models.AnalysisResponse, error) {
@@ -55,12 +35,11 @@ func TestAnalyzeHandler(t *testing.T) {
 		ContainsLoginForm: false,
 	}
 
-	// Set up mock function
 	mockAnalyzeFunc = func(url string) (*models.AnalysisResponse, error) {
 		return mockResponse, nil
 	}
 
-	// Replace the analyzer with our test mock
+	// Replace the analyzer with  test mock
 	singletonAnalyzer = &testMockAnalyzer{}
 
 	// Create test request
@@ -141,14 +120,14 @@ func TestAnalyzeHandler_AnalyzerError(t *testing.T) {
 	// Clear singleton analyzer
 	singletonAnalyzer = nil
 
-	// Set up mock analyzer that returns an error
+	// Set up mock analyzer -> returns an error
 	singletonAnalyzer = &MockAnalyzer{
 		AnalyzeFn: func(url string) (*models.AnalysisResponse, error) {
 			return nil, errors.New("analyzer error")
 		},
 	}
 
-	// Ensure analyzer is cleared after test
+	// Ensure analyzer is reset
 	defer func() {
 		singletonAnalyzer = nil
 	}()

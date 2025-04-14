@@ -8,7 +8,7 @@ import (
 	"github.com/maheshjq/web-analyzer_v1/internal/models"
 )
 
-// Configuration to enable/disable caching
+// toggle flag -> enable/disable caching
 var EnableCaching = true
 
 // Analyzer interface defines the behavior for a web page analyzer
@@ -16,11 +16,10 @@ type Analyzer interface {
 	Analyze(url string) (*models.AnalysisResponse, error)
 }
 
-// Global singleton instance
+// Global singleton
 var singletonAnalyzer Analyzer
 var once sync.Once
 
-// GetAnalyzer returns the singleton analyzer instance
 func GetAnalyzer() Analyzer {
 	once.Do(func() {
 		realAnalyzer := &DefaultAnalyzer{}
@@ -36,12 +35,12 @@ func GetAnalyzer() Analyzer {
 	return singletonAnalyzer
 }
 
-// DefaultAnalyzer is a wrapper around the actual analyzer implementation
+// DefaultAnalyzer is a wrapper for the actual analyzer imple
 type DefaultAnalyzer struct{}
 
 // Analyze implements the Analyzer interface by calling the actual analyzer
 func (da *DefaultAnalyzer) Analyze(url string) (*models.AnalysisResponse, error) {
-	// Create an instance of your actual analyzer
+	// Create an instance of actual analyzer
 	realAnalyzer := analyzer.NewAnalyzer()
 
 	// Call the actual analyze method

@@ -13,12 +13,10 @@ import (
 	"github.com/maheshjq/web-analyzer_v1/internal/models"
 )
 
-// Analyzer handles webpage analysis
 type Analyzer struct {
 	client *http.Client
 }
 
-// NewAnalyzer creates a new Analyzer instance
 func NewAnalyzer() *Analyzer {
 	return &Analyzer{
 		client: &http.Client{
@@ -59,25 +57,19 @@ func (a *Analyzer) Analyze(targetURL string) (*models.AnalysisResponse, error) {
 		Links:    models.LinkAnalysis{},
 	}
 
-	// Detect HTML version
 	result.HTMLVersion = detectHTMLVersion(doc)
 
-	// Extract title
 	result.Title = extractTitle(doc)
 
-	// Count headings
 	countHeadings(doc, &result.Headings)
 
-	// Analyze links
 	result.Links = analyzeLinks(doc, baseURL.Host, a.client)
 
-	// Detect login form
 	result.ContainsLoginForm = detectLoginForm(doc)
 
 	return result, nil
 }
 
-// detectHTMLVersion determines the HTML version based on the doctype
 func detectHTMLVersion(doc *html.Node) string {
 	if doc.Type == html.DocumentNode {
 		for child := doc.FirstChild; child != nil; child = child.NextSibling {
@@ -86,7 +78,7 @@ func detectHTMLVersion(doc *html.Node) string {
 				if strings.ToLower(child.Data) == "html" && len(child.Attr) == 0 {
 					return "HTML5"
 				}
-				// Check public identifier for older versions
+				// Check for older versions
 				for _, attr := range child.Attr {
 					if attr.Key == "public" {
 						pubID := strings.ToLower(attr.Val)
@@ -164,7 +156,6 @@ func extractTitle(doc *html.Node) string {
 	return title
 }
 
-// countHeadings counts the number of each heading type (h1-h6)
 func countHeadings(doc *html.Node, headings *models.HeadingCount) {
 	var crawler func(*html.Node)
 
@@ -245,7 +236,6 @@ func analyzeLinks(doc *html.Node, host string, client *http.Client) models.LinkA
 	}
 }
 
-// isInternalLink determines if a link is internal (same domain) or external
 func isInternalLink(href, host string) bool {
 	if href == "" || strings.HasPrefix(href, "#") {
 		return true
@@ -260,14 +250,12 @@ func isInternalLink(href, host string) bool {
 	return u.Host == host || u.Host == ""
 }
 
-// isAccessibleLink checks if a link is accessible
 func isAccessibleLink(link string, client *http.Client) bool {
 	// Fragment links are considered accessible
 	if strings.HasPrefix(link, "#") {
 		return true
 	}
 
-	// Try to fetch the link
 	resp, err := client.Head(link)
 	if err != nil {
 		return false
@@ -282,7 +270,6 @@ func isAccessibleLink(link string, client *http.Client) bool {
 func detectLoginForm(doc *html.Node) bool {
 	var hasLoginForm bool
 
-	// Look for indicators of a login form
 	var crawler func(*html.Node)
 	crawler = func(n *html.Node) {
 		if hasLoginForm {
@@ -303,7 +290,6 @@ func detectLoginForm(doc *html.Node) bool {
 				}
 			}
 
-			// Check attribute indicators
 			if strings.Contains(formAction, "login") ||
 				strings.Contains(formAction, "signin") ||
 				strings.Contains(formId, "login") ||

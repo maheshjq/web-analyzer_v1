@@ -8,7 +8,6 @@ import (
 )
 
 func TestAnalysisResponseSerialization(t *testing.T) {
-	// Create a sample analysis response
 	response := AnalysisResponse{
 		HTMLVersion: "HTML5",
 		Title:       "Test Page",
@@ -34,7 +33,6 @@ func TestAnalysisResponseSerialization(t *testing.T) {
 	err = json.Unmarshal(jsonData, &decoded)
 	assert.NoError(t, err)
 
-	// Verify fields match
 	assert.Equal(t, response.HTMLVersion, decoded.HTMLVersion)
 	assert.Equal(t, response.Title, decoded.Title)
 	assert.Equal(t, response.Headings.H1, decoded.Headings.H1)
