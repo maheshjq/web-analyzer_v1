@@ -20,11 +20,21 @@ import (
 	_ "github.com/maheshjq/web-analyzer_v1/docs"
 )
 
+func init() {
+	api.NewAnalyzerFunc = func() api.Analyzer {
+		// Create default analyzer
+		defaultAnalyzer := &api.DefaultAnalyzer{}
+
+		// Wrap with caching (cache results for 5 minutes)
+		return api.NewCachedAnalyzer(defaultAnalyzer, 5*time.Minute)
+	}
+}
+
 // @title Web Page Analyzer API
 // @version 1.0
 // @description API for analyzing web pages, extracting HTML version, title, headings, links, and detecting login forms.
 
-// @contact.name Mahesh Nanayakkara
+// @contact.name Web Analyzer Team
 
 // @host localhost:8080
 // @BasePath /
