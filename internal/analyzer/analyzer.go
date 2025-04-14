@@ -128,25 +128,19 @@ func findElement(n *html.Node, tagName string) bool {
 	return false
 }
 
-// extractTitle extracts the title from the document
 func extractTitle(doc *html.Node) string {
 	var title string
-	var found bool
-	var crawler func(*html.Node)
-	crawler = func(n *html.Node) {
-		if found {
-			return
-		}
+	var findTitle func(*html.Node)
+	findTitle = func(n *html.Node) {
 		if n.Type == html.ElementNode && n.Data == "title" {
 			title = getTextContent(n)
-			found = true
 			return
 		}
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			crawler(c)
+			findTitle(c)
 		}
 	}
-	crawler(doc)
+	findTitle(doc)
 	return title
 }
 
@@ -194,10 +188,8 @@ func countHeadings(doc *html.Node, headings *models.HeadingCount) {
 // analyzeLinks analyzes and categorizes links in the document
 func analyzeLinks(doc *html.Node, host string, client *http.Client) models.LinkAnalysis {
 	var links []string
-
-	// Extract all links
-	var crawler func(*html.Node)
-	crawler = func(n *html.Node) {
+	var extractLinks func(*html.Node)
+	extractLinks = func(n *html.Node) {
 		if n.Type == html.ElementNode && n.Data == "a" {
 			for _, attr := range n.Attr {
 				if attr.Key == "href" {
@@ -206,58 +198,37 @@ func analyzeLinks(doc *html.Node, host string, client *http.Client) models.LinkA
 				}
 			}
 		}
-
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			crawler(c)
+			extractLinks(c)
 		}
 	}
+	extractLinks(doc)
 
-	crawler(doc)
-
-	// Categorize links (internal vs external)
 	var internal, external, inaccessible int
 	var wg sync.WaitGroup
-	var mu sync.Mutex
-
-	// Create a client with shorter timeout for checking link accessibility
-	linkClient := &http.Client{
-		Timeout: 3 * time.Second,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse // Don't follow redirects
-		},
-	}
-
-	// Process each link
 	for _, link := range links {
 		wg.Add(1)
 		go func(l string) {
 			defer wg.Done()
-
-			// Skip empty links and javascript
 			if l == "" || strings.HasPrefix(l, "javascript:") {
 				return
 			}
-
-			// Check if internal or external
 			isInternal := isInternalLink(l, host)
-
-			mu.Lock()
 			if isInternal {
 				internal++
 			} else {
 				external++
 			}
-
-			// Check accessibility (only for HTTP(S) links)
-			if strings.HasPrefix(l, "http") && !isAccessibleLink(l, linkClient) {
-				inaccessible++
+			if strings.HasPrefix(l, "http") {
+				fmt.Println("Checking accessibility for:", l) // Debug print
+				if !isAccessibleLink(l, client) {
+					fmt.Println("Inaccessible link found:", l) // Debug print
+					inaccessible++
+				}
 			}
-			mu.Unlock()
 		}(link)
 	}
-
 	wg.Wait()
-
 	return models.LinkAnalysis{
 		Internal:     internal,
 		External:     external,

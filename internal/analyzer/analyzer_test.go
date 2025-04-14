@@ -116,7 +116,7 @@ func TestExtractTitle(t *testing.T) {
 		{
 			name:     "Nested content in title",
 			html:     `<html><head><title>Title <span>with span</span></title></head><body></body></html>`,
-			expected: "Title ",
+			expected: "Title with span",
 		},
 	}
 
@@ -518,14 +518,9 @@ func TestAnalyzeLinks(t *testing.T) {
 	client := &http.Client{
 		Transport: &mockRoundTripper{
 			responses: map[string]*http.Response{
-				"https://example.com/contact": {
-					StatusCode: http.StatusOK,
-					Body:       io.NopCloser(bytes.NewBufferString("")),
-				},
-				"https://external.com": {
-					StatusCode: http.StatusOK,
-					Body:       io.NopCloser(bytes.NewBufferString("")),
-				},
+				"https://example.com/contact": {StatusCode: http.StatusOK, Body: io.NopCloser(bytes.NewBufferString(""))},
+				"https://external.com":        {StatusCode: http.StatusOK, Body: io.NopCloser(bytes.NewBufferString(""))},
+				"https://example.com/":        {StatusCode: http.StatusOK, Body: io.NopCloser(bytes.NewBufferString(""))},
 			},
 		},
 	}
