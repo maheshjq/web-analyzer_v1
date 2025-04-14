@@ -31,35 +31,42 @@ func setupMockAnalyzer(fn func(string) (*models.AnalysisResponse, error)) {
 	}()
 }
 
-func TestAnalyzeHandler(t *testing.T) {
-	// Clear singleton analyzer
-	singletonAnalyzer = nil
+// Add at the top of your handlers_test.go file:
+var mockAnalyzeFunc func(url string) (*models.AnalysisResponse, error)
 
-	// Set up mock analyzer
-	singletonAnalyzer = &MockAnalyzer{
-		AnalyzeFn: func(url string) (*models.AnalysisResponse, error) {
-			// Return predetermined test data
-			return &models.AnalysisResponse{
-				HTMLVersion:       "HTML5",
-				Title:             "Test Page",
-				Headings:          models.HeadingCount{H1: 1, H2: 2},
-				Links:             models.LinkAnalysis{Internal: 5, External: 3},
-				ContainsLoginForm: true,
-			}, nil
-		},
+// Then create a mock analyzer type that uses this function
+type testMockAnalyzer struct{}
+
+func (m *testMockAnalyzer) Analyze(url string) (*models.AnalysisResponse, error) {
+	return mockAnalyzeFunc(url)
+}
+
+func TestAnalyzeHandler(t *testing.T) {
+	// Save original and restore after test
+	originalAnalyzer := singletonAnalyzer
+	defer func() { singletonAnalyzer = originalAnalyzer }()
+
+	// Create mock response
+	mockResponse := &models.AnalysisResponse{
+		HTMLVersion:       "HTML5",
+		Title:             "Test Page",
+		Headings:          models.HeadingCount{H1: 1, H2: 2},
+		Links:             models.LinkAnalysis{Internal: 5, External: 3},
+		ContainsLoginForm: true,
 	}
 
-	// Ensure analyzer is cleared after test
-	defer func() {
-		singletonAnalyzer = nil
-	}()
+	// Set up mock function
+	mockAnalyzeFunc = func(url string) (*models.AnalysisResponse, error) {
+		return mockResponse, nil
+	}
+
+	// Replace the analyzer with our test mock
+	singletonAnalyzer = &testMockAnalyzer{}
 
 	// Create test request
 	reqBody := `{"url": "https://example.com"}`
 	req, err := http.NewRequest("POST", "/api/analyze", strings.NewReader(reqBody))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
 
 	// Create response recorder
@@ -70,24 +77,21 @@ func TestAnalyzeHandler(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	// Check response
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
-	}
+	require.Equal(t, http.StatusOK, rr.Code)
 
 	// Parse response
 	var response models.AnalysisResponse
-	if err := json.Unmarshal(rr.Body.Bytes(), &response); err != nil {
-		t.Fatal("Failed to parse response:", err)
-	}
+	err = json.Unmarshal(rr.Body.Bytes(), &response)
+	require.NoError(t, err, "Failed to parse response")
 
 	// Verify response data
-	assert.Equal(t, "HTML5", response.HTMLVersion, "unexpected HTML version")
-	assert.Equal(t, "Test Page", response.Title, "unexpected title")
-	assert.Equal(t, 1, response.Headings.H1, "unexpected H1 count")
-	assert.Equal(t, 2, response.Headings.H2, "unexpected H2 count")
-	assert.Equal(t, 5, response.Links.Internal, "unexpected internal links count")
-	assert.Equal(t, 3, response.Links.External, "unexpected external links count")
-	assert.True(t, response.ContainsLoginForm, "expected login form to be detected")
+	assert.Equal(t, mockResponse.HTMLVersion, response.HTMLVersion, "unexpected HTML version")
+	assert.Equal(t, mockResponse.Title, response.Title, "unexpected title")
+	assert.Equal(t, mockResponse.Headings.H1, response.Headings.H1, "unexpected H1 count")
+	assert.Equal(t, mockResponse.Headings.H2, response.Headings.H2, "unexpected H2 count")
+	assert.Equal(t, mockResponse.Links.Internal, response.Links.Internal, "unexpected internal links count")
+	assert.Equal(t, mockResponse.Links.External, response.Links.External, "unexpected external links count")
+	assert.Equal(t, mockResponse.ContainsLoginForm, response.ContainsLoginForm, "unexpected login form detection")
 }
 
 func TestAnalyzeHandler_InvalidRequest(t *testing.T) {
