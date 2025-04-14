@@ -3,8 +3,45 @@ package api
 import (
 	"log/slog"
 	"net/http"
+	"strconv"
 	"time"
+
+	"github.com/maheshjq/web-analyzer_v1/internal/metrics"
 )
+
+// metric trace support work ---start
+type responseWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func newResponseWriter(w http.ResponseWriter) *responseWriter {
+	return &responseWriter{w, http.StatusOK}
+}
+
+func (rw *responseWriter) WriteHeader(code int) {
+	rw.statusCode = code
+	rw.ResponseWriter.WriteHeader(code)
+}
+
+func MetricsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rw := newResponseWriter(w)
+		start := time.Now()
+
+		endpoint := r.URL.Path
+
+		next.ServeHTTP(rw, r)
+
+		duration := time.Since(start)
+		metrics.RequestDuration.WithLabelValues(endpoint).Observe(duration.Seconds())
+
+		statusCode := strconv.Itoa(rw.statusCode)
+		metrics.RequestsTotal.WithLabelValues(endpoint, statusCode).Inc()
+	})
+}
+
+// metric trace support work ---end
 
 func LoggingMiddleware(logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
