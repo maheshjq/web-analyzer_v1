@@ -185,7 +185,6 @@ func countHeadings(doc *html.Node, headings *models.HeadingCount) {
 	crawler(doc)
 }
 
-// analyzeLinks analyzes and categorizes links in the document
 func analyzeLinks(doc *html.Node, host string, client *http.Client) models.LinkAnalysis {
 	var links []string
 	var extractLinks func(*html.Node)
@@ -204,31 +203,63 @@ func analyzeLinks(doc *html.Node, host string, client *http.Client) models.LinkA
 	}
 	extractLinks(doc)
 
-	var internal, external, inaccessible int
+	// Define a result struct for channel communication
+	type linkResult struct {
+		isInternal     bool
+		isExternal     bool
+		isInaccessible bool
+	}
+
+	resultCh := make(chan linkResult, len(links))
 	var wg sync.WaitGroup
+
 	for _, link := range links {
+		if link == "" || strings.HasPrefix(link, "javascript:") {
+			continue // Skip empty or js links
+		}
+
 		wg.Add(1)
 		go func(l string) {
 			defer wg.Done()
-			if l == "" || strings.HasPrefix(l, "javascript:") {
-				return
+
+			result := linkResult{
+				isInternal:     isInternalLink(l, host),
+				isExternal:     !isInternalLink(l, host),
+				isInaccessible: false,
 			}
-			isInternal := isInternalLink(l, host)
-			if isInternal {
-				internal++
-			} else {
-				external++
-			}
+
 			if strings.HasPrefix(l, "http") {
 				fmt.Println("Checking accessibility for:", l) // Debug print
 				if !isAccessibleLink(l, client) {
 					fmt.Println("Inaccessible link found:", l) // Debug print
-					inaccessible++
+					result.isInaccessible = true
 				}
 			}
+
+			resultCh <- result
 		}(link)
 	}
-	wg.Wait()
+
+	// Close the channel when all goroutines complete
+	go func() {
+		wg.Wait()
+		close(resultCh)
+	}()
+
+	// Count the results
+	var internal, external, inaccessible int
+	for result := range resultCh {
+		if result.isInternal {
+			internal++
+		}
+		if result.isExternal {
+			external++
+		}
+		if result.isInaccessible {
+			inaccessible++
+		}
+	}
+
 	return models.LinkAnalysis{
 		Internal:     internal,
 		External:     external,
