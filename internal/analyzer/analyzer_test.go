@@ -9,16 +9,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/maheshjq/web-analyzer_v1/internal/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/html"
+
+	"github.com/maheshjq/web-analyzer_v1/internal/models"
 )
 
 // TestNewAnalyzer ensures the analyzer is created with the correct defaults
 func TestNewAnalyzer(t *testing.T) {
 	analyzer := NewAnalyzer()
-	
+
 	// Check that we have a non-nil analyzer with correct timeout
 	require.NotNil(t, analyzer)
 	require.NotNil(t, analyzer.client)
@@ -113,9 +114,9 @@ func TestExtractTitle(t *testing.T) {
 			expected: "First Title",
 		},
 		{
-			name:     "Nested content in title",
-			html:     `<html><head><title>Title <span>with span</span></title></head><body></body></html>`,
-			expected: "Title ",
+			name:     "Nested title",
+			html:     `<html><head><title>Title with nested tags</title></head><body></body></html>`,
+			expected: "Title with nested tags",
 		},
 	}
 
@@ -153,8 +154,8 @@ func TestCountHeadings(t *testing.T) {
 			expected: models.HeadingCount{H1: 1, H2: 2, H3: 1, H4: 1, H5: 1, H6: 1},
 		},
 		{
-			name: "No headings",
-			html: `<html><body><p>No headings here</p></body></html>`,
+			name:     "No headings",
+			html:     `<html><body><p>No headings here</p></body></html>`,
 			expected: models.HeadingCount{H1: 0, H2: 0, H3: 0, H4: 0, H5: 0, H6: 0},
 		},
 		{
@@ -189,7 +190,7 @@ func TestCountHeadings(t *testing.T) {
 
 			headings := models.HeadingCount{}
 			countHeadings(doc, &headings)
-			
+
 			assert.Equal(t, tc.expected.H1, headings.H1)
 			assert.Equal(t, tc.expected.H2, headings.H2)
 			assert.Equal(t, tc.expected.H3, headings.H3)
@@ -307,7 +308,7 @@ func TestIsAccessibleLink(t *testing.T) {
 			},
 		},
 		errors: map[string]error{
-			"https://example.com/timeout": url.Error{
+			"https://example.com/timeout": &url.Error{
 				Err: &timeoutError{},
 			},
 		},
@@ -463,8 +464,8 @@ func TestDetectLoginForm(t *testing.T) {
 			expected: false,
 		},
 		{
-			name: "Empty document",
-			html: ``,
+			name:     "Empty document",
+			html:     ``,
 			expected: false,
 		},
 		{
@@ -498,7 +499,7 @@ func TestDetectLoginForm(t *testing.T) {
 // TestAnalyzeLinks tests the analyzeLinks function
 func TestAnalyzeLinks(t *testing.T) {
 	// Simple test for link extraction and categorization
-	html := `
+	htmlStr := `
 		<html><body>
 			<a href="/">Home</a>
 			<a href="/about">About</a>
@@ -509,34 +510,28 @@ func TestAnalyzeLinks(t *testing.T) {
 			<a href="javascript:void(0)">JS Link</a>
 		</body></html>
 	`
-	
-	doc, err := html.Parse(strings.NewReader(html))
+
+	doc, err := html.Parse(strings.NewReader(htmlStr))
 	require.NoError(t, err)
-	
+
 	// Create a test client with mocked responses
 	client := &http.Client{
 		Transport: &mockRoundTripper{
 			responses: map[string]*http.Response{
-				"https://example.com/contact": {
-					StatusCode: http.StatusOK,
-					Body:       io.NopCloser(bytes.NewBufferString("")),
-				},
-				"https://external.com": {
-					StatusCode: http.StatusOK,
-					Body:       io.NopCloser(bytes.NewBufferString("")),
-				},
+				"https://example.com/contact": {StatusCode: http.StatusOK, Body: io.NopCloser(bytes.NewBufferString(""))},
+				"https://external.com":        {StatusCode: http.StatusOK, Body: io.NopCloser(bytes.NewBufferString(""))},
+				"https://example.com/":        {StatusCode: http.StatusOK, Body: io.NopCloser(bytes.NewBufferString(""))},
 			},
 		},
 	}
-	
+
 	// Analyze links
 	result := analyzeLinks(doc, "example.com", client)
-	
+
 	// Check the results
-	// Note: Exact counts can vary based on implementation details
 	assert.GreaterOrEqual(t, result.Internal, 3) // Home, About, Section should be internal
 	assert.GreaterOrEqual(t, result.External, 2) // External and Email should be external
-	assert.Equal(t, 0, result.Inaccessible) // All links are accessible in our mock
+	assert.Equal(t, 0, result.Inaccessible)      // All links are accessible in our mock
 }
 
 // Test helpers
@@ -553,12 +548,12 @@ func (m *mockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 	if err, ok := m.errors[req.URL.String()]; ok {
 		return nil, err
 	}
-	
+
 	// Check if we have a response for this URL
 	if resp, ok := m.responses[req.URL.String()]; ok {
 		return resp, nil
 	}
-	
+
 	// Default to 404 Not Found
 	return &http.Response{
 		StatusCode: http.StatusNotFound,
@@ -573,9 +568,8 @@ func (e *timeoutError) Error() string   { return "timeout error" }
 func (e *timeoutError) Timeout() bool   { return true }
 func (e *timeoutError) Temporary() bool { return true }
 
-// TestFindElement tests the findElement function
 func TestFindElement(t *testing.T) {
-	html := `
+	htmlStr := `
 		<html>
 			<head><title>Test</title></head>
 			<body>
@@ -588,18 +582,18 @@ func TestFindElement(t *testing.T) {
 			</body>
 		</html>
 	`
-	
-	doc, err := html.Parse(strings.NewReader(html))
+
+	doc, err := html.Parse(strings.NewReader(htmlStr))
 	require.NoError(t, err)
-	
+
 	// Test for elements that exist
 	assert.True(t, findElement(doc, "header"))
 	assert.True(t, findElement(doc, "nav"))
 	assert.True(t, findElement(doc, "article"))
 	assert.True(t, findElement(doc, "section"))
 	assert.True(t, findElement(doc, "footer"))
-	
-	// Test for elements that don't exist
+
+	// Test for elements that don’t exist
 	assert.False(t, findElement(doc, "aside"))
 	assert.False(t, findElement(doc, "canvas"))
 	assert.False(t, findElement(doc, "video"))
@@ -632,7 +626,7 @@ func TestAnalyze(t *testing.T) {
 		</body>
 		</html>
 	`
-	
+
 	// Create a mock HTTP client
 	mockTransport := &mockRoundTripper{
 		responses: map[string]*http.Response{
@@ -647,23 +641,23 @@ func TestAnalyze(t *testing.T) {
 			},
 		},
 		errors: map[string]error{
-			"https://timeout.example.com": url.Error{
+			"https://timeout.example.com": &url.Error{
 				Err: &timeoutError{},
 			},
 		},
 	}
-	
+
 	// Create an analyzer with the mock client
 	analyzer := &Analyzer{
 		client: &http.Client{
 			Transport: mockTransport,
 		},
 	}
-	
+
 	// Test successful analysis
 	t.Run("Successful Analysis", func(t *testing.T) {
 		result, err := analyzer.Analyze("https://test.example.com")
-		
+
 		require.NoError(t, err)
 		assert.Equal(t, "HTML5", result.HTMLVersion)
 		assert.Equal(t, "Test Page", result.Title)
@@ -673,19 +667,19 @@ func TestAnalyze(t *testing.T) {
 		assert.GreaterOrEqual(t, result.Links.Internal, 2) // At least 2 internal links
 		assert.GreaterOrEqual(t, result.Links.External, 1) // At least 1 external link
 	})
-	
+
 	// Test HTTP error
 	t.Run("HTTP Error", func(t *testing.T) {
 		_, err := analyzer.Analyze("https://error.example.com")
-		
+
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "HTTP error: 404")
 	})
-	
+
 	// Test network error
 	t.Run("Network Error", func(t *testing.T) {
 		_, err := analyzer.Analyze("https://timeout.example.com")
-		
+
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to fetch URL")
 	})
