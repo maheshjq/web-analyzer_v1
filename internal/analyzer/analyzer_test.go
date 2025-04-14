@@ -9,10 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/maheshjq/web-analyzer_v1/internal/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/html"
+
+	"github.com/maheshjq/web-analyzer_v1/internal/models"
 )
 
 // TestNewAnalyzer ensures the analyzer is created with the correct defaults
@@ -645,7 +646,7 @@ func TestAnalyze(t *testing.T) {
 			},
 		},
 		errors: map[string]error{
-			"https://example.com/timeout": &url.Error{
+			"https://timeout.example.com": &url.Error{
 				Err: &timeoutError{},
 			},
 		},

@@ -8,8 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/maheshjq/web-analyzer_v1/internal/models"
 	"golang.org/x/net/html"
+
+	"github.com/maheshjq/web-analyzer_v1/internal/models"
 )
 
 // Analyzer handles webpage analysis
@@ -78,46 +79,37 @@ func (a *Analyzer) Analyze(targetURL string) (*models.AnalysisResponse, error) {
 
 // detectHTMLVersion determines the HTML version based on the doctype
 func detectHTMLVersion(doc *html.Node) string {
-	// Check for doctype
 	if doc.Type == html.DocumentNode {
 		for child := doc.FirstChild; child != nil; child = child.NextSibling {
 			if child.Type == html.DoctypeNode {
-				doctype := child.Data
-				
-				// Check for HTML5
-				if strings.Contains(doctype, "html") && !strings.Contains(doctype, "DTD") {
+				// HTML5: <!DOCTYPE html> with no attributes
+				if strings.ToLower(child.Data) == "html" && len(child.Attr) == 0 {
 					return "HTML5"
 				}
-				
-				// Check for HTML 4
-				if strings.Contains(doctype, "HTML 4") || strings.Contains(doctype, "HTML 4.01") {
-					return "HTML 4.01"
-				}
-				
-				// Check for XHTML
-				if strings.Contains(doctype, "XHTML") {
-					if strings.Contains(doctype, "1.0") {
-						return "XHTML 1.0"
-					}
-					if strings.Contains(doctype, "1.1") {
-						return "XHTML 1.1"
+				// Check public identifier for older versions
+				for _, attr := range child.Attr {
+					if attr.Key == "public" {
+						pubID := strings.ToLower(attr.Val)
+						if strings.Contains(pubID, "html 4") {
+							return "HTML 4.01"
+						} else if strings.Contains(pubID, "xhtml 1.0") {
+							return "XHTML 1.0"
+						} else if strings.Contains(pubID, "xhtml 1.1") {
+							return "XHTML 1.1"
+						}
 					}
 				}
-				
-				// Return something generic if we found a doctype but couldn't identify it precisely
-				return "Unknown DOCTYPE: " + doctype
+				return "Unknown DOCTYPE"
 			}
 		}
 	}
-
-	// If no doctype is found, check for HTML5 elements
+	// Check for HTML5 elements if no doctype
 	html5Elements := []string{"article", "aside", "audio", "canvas", "footer", "header", "nav", "section", "video"}
 	for _, element := range html5Elements {
 		if findElement(doc, element) {
 			return "HTML5 (No DOCTYPE)"
 		}
 	}
-
 	return "Unknown (No DOCTYPE)"
 }
 
@@ -126,42 +118,53 @@ func findElement(n *html.Node, tagName string) bool {
 	if n.Type == html.ElementNode && strings.ToLower(n.Data) == tagName {
 		return true
 	}
-	
+
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
 		if findElement(c, tagName) {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
 // extractTitle extracts the title from the document
 func extractTitle(doc *html.Node) string {
 	var title string
+	var found bool
 	var crawler func(*html.Node)
-	
 	crawler = func(n *html.Node) {
-		if n.Type == html.ElementNode && n.Data == "title" {
-			if n.FirstChild != nil {
-				title = n.FirstChild.Data
-				return
-			}
+		if found {
+			return
 		}
-		
+		if n.Type == html.ElementNode && n.Data == "title" {
+			title = getTextContent(n)
+			found = true
+			return
+		}
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
 			crawler(c)
 		}
 	}
-	
 	crawler(doc)
 	return title
+}
+
+func getTextContent(n *html.Node) string {
+	if n.Type == html.TextNode {
+		return n.Data
+	}
+	var text string
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		text += getTextContent(c)
+	}
+	return text
 }
 
 // countHeadings counts the number of each heading type (h1-h6)
 func countHeadings(doc *html.Node, headings *models.HeadingCount) {
 	var crawler func(*html.Node)
-	
+
 	crawler = func(n *html.Node) {
 		if n.Type == html.ElementNode {
 			switch n.Data {
@@ -179,19 +182,19 @@ func countHeadings(doc *html.Node, headings *models.HeadingCount) {
 				headings.H6++
 			}
 		}
-		
+
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
 			crawler(c)
 		}
 	}
-	
+
 	crawler(doc)
 }
 
 // analyzeLinks analyzes and categorizes links in the document
 func analyzeLinks(doc *html.Node, host string, client *http.Client) models.LinkAnalysis {
 	var links []string
-	
+
 	// Extract all links
 	var crawler func(*html.Node)
 	crawler = func(n *html.Node) {
@@ -203,19 +206,19 @@ func analyzeLinks(doc *html.Node, host string, client *http.Client) models.LinkA
 				}
 			}
 		}
-		
+
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
 			crawler(c)
 		}
 	}
-	
+
 	crawler(doc)
-	
+
 	// Categorize links (internal vs external)
 	var internal, external, inaccessible int
 	var wg sync.WaitGroup
 	var mu sync.Mutex
-	
+
 	// Create a client with shorter timeout for checking link accessibility
 	linkClient := &http.Client{
 		Timeout: 3 * time.Second,
@@ -223,28 +226,28 @@ func analyzeLinks(doc *html.Node, host string, client *http.Client) models.LinkA
 			return http.ErrUseLastResponse // Don't follow redirects
 		},
 	}
-	
+
 	// Process each link
 	for _, link := range links {
 		wg.Add(1)
 		go func(l string) {
 			defer wg.Done()
-			
+
 			// Skip empty links and javascript
 			if l == "" || strings.HasPrefix(l, "javascript:") {
 				return
 			}
-			
+
 			// Check if internal or external
 			isInternal := isInternalLink(l, host)
-			
+
 			mu.Lock()
 			if isInternal {
 				internal++
 			} else {
 				external++
 			}
-			
+
 			// Check accessibility (only for HTTP(S) links)
 			if strings.HasPrefix(l, "http") && !isAccessibleLink(l, linkClient) {
 				inaccessible++
@@ -252,9 +255,9 @@ func analyzeLinks(doc *html.Node, host string, client *http.Client) models.LinkA
 			mu.Unlock()
 		}(link)
 	}
-	
+
 	wg.Wait()
-	
+
 	return models.LinkAnalysis{
 		Internal:     internal,
 		External:     external,
@@ -264,22 +267,16 @@ func analyzeLinks(doc *html.Node, host string, client *http.Client) models.LinkA
 
 // isInternalLink determines if a link is internal (same domain) or external
 func isInternalLink(href, host string) bool {
-	// Fragment or empty links are internal
 	if href == "" || strings.HasPrefix(href, "#") {
 		return true
 	}
-	
-	// Relative links are internal
 	if strings.HasPrefix(href, "/") || strings.HasPrefix(href, "./") || strings.HasPrefix(href, "../") {
 		return true
 	}
-	
-	// Absolute links need checking
 	u, err := url.Parse(href)
-	if err != nil {
+	if err != nil || (u.Scheme != "" && u.Scheme != "http" && u.Scheme != "https") {
 		return false
 	}
-	
 	return u.Host == host || u.Host == ""
 }
 
@@ -289,14 +286,14 @@ func isAccessibleLink(link string, client *http.Client) bool {
 	if strings.HasPrefix(link, "#") {
 		return true
 	}
-	
+
 	// Try to fetch the link
 	resp, err := client.Head(link)
 	if err != nil {
 		return false
 	}
 	defer resp.Body.Close()
-	
+
 	// 2xx and 3xx status codes are considered accessible
 	return resp.StatusCode >= 200 && resp.StatusCode < 400
 }
@@ -304,14 +301,14 @@ func isAccessibleLink(link string, client *http.Client) bool {
 // detectLoginForm detects if the document contains a login form
 func detectLoginForm(doc *html.Node) bool {
 	var hasLoginForm bool
-	
+
 	// Look for indicators of a login form
 	var crawler func(*html.Node)
 	crawler = func(n *html.Node) {
 		if hasLoginForm {
 			return
 		}
-		
+
 		if n.Type == html.ElementNode && n.Data == "form" {
 			// Check for form attributes that suggest a login form
 			var formAction, formId, formClass string
@@ -325,18 +322,18 @@ func detectLoginForm(doc *html.Node) bool {
 					formClass = strings.ToLower(attr.Val)
 				}
 			}
-			
+
 			// Check attribute indicators
-			if strings.Contains(formAction, "login") || 
-			   strings.Contains(formAction, "signin") ||
-			   strings.Contains(formId, "login") ||
-			   strings.Contains(formId, "signin") ||
-			   strings.Contains(formClass, "login") ||
-			   strings.Contains(formClass, "signin") {
+			if strings.Contains(formAction, "login") ||
+				strings.Contains(formAction, "signin") ||
+				strings.Contains(formId, "login") ||
+				strings.Contains(formId, "signin") ||
+				strings.Contains(formClass, "login") ||
+				strings.Contains(formClass, "signin") {
 				hasLoginForm = true
 				return
 			}
-			
+
 			// Check form elements for password inputs
 			var formCrawler func(*html.Node)
 			formCrawler = func(node *html.Node) {
@@ -348,20 +345,20 @@ func detectLoginForm(doc *html.Node) bool {
 						}
 					}
 				}
-				
+
 				for c := node.FirstChild; c != nil; c = c.NextSibling {
 					formCrawler(c)
 				}
 			}
-			
+
 			formCrawler(n)
 		}
-		
+
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
 			crawler(c)
 		}
 	}
-	
+
 	crawler(doc)
 	return hasLoginForm
 }
