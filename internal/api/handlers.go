@@ -36,42 +36,42 @@ import (
 // @Failure 502 {object} models.ErrorResponse "Unable to fetch the URL or an error occurred during analysis"
 // @Router /api/analyze [post]
 func AnalyzeHandler(w http.ResponseWriter, r *http.Request) {
-    w.Header().Set("Content-Type", "application/json")
-	
+	w.Header().Set("Content-Type", "application/json")
+
 	var req models.AnalysisRequest
-    err := json.NewDecoder(r.Body).Decode(&req)
-    if err != nil {
-        sendErrorResponse(w, http.StatusBadRequest, "Invalid request body: "+err.Error())
-        return
-    }
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		sendErrorResponse(w, http.StatusBadRequest, "Invalid request body: "+err.Error())
+		return
+	}
 
-    if req.URL == "" {
-        sendErrorResponse(w, http.StatusBadRequest, "URL is required")
-        return
-    }
+	if req.URL == "" {
+		sendErrorResponse(w, http.StatusBadRequest, "URL is required")
+		return
+	}
 
-    if !strings.HasPrefix(req.URL, "http://") && !strings.HasPrefix(req.URL, "https://") {
-        req.URL = "https://" + req.URL
-    }
+	if !strings.HasPrefix(req.URL, "http://") && !strings.HasPrefix(req.URL, "https://") {
+		req.URL = "https://" + req.URL
+	}
 
-    _, err = url.ParseRequestURI(req.URL)
-    if err != nil {
-        sendErrorResponse(w, http.StatusBadRequest, "Invalid URL format: "+err.Error())
-        return
-    }
+	_, err = url.ParseRequestURI(req.URL)
+	if err != nil {
+		sendErrorResponse(w, http.StatusBadRequest, "Invalid URL format: "+err.Error())
+		return
+	}
 
-    analyzerInstance := NewAnalyzerFunc()
+	analyzerInstance := GetAnalyzer()
 
-    // Analyze the url here
-    analysisResult, err := analyzerInstance.Analyze(req.URL)
-    if err != nil {
-        log.Printf("Error analyzing URL %s: %v", req.URL, err)
-        sendErrorResponse(w, http.StatusBadGateway, fmt.Sprintf("Failed to analyze URL: %v", err))
-        return
-    }
+	// Analyze the url here
+	analysisResult, err := analyzerInstance.Analyze(req.URL)
+	if err != nil {
+		log.Printf("Error analyzing URL %s: %v", req.URL, err)
+		sendErrorResponse(w, http.StatusBadGateway, fmt.Sprintf("Failed to analyze URL: %v", err))
+		return
+	}
 
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(analysisResult)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(analysisResult)
 }
 
 // HealthCheckHandler godoc

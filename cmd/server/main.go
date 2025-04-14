@@ -21,13 +21,13 @@ import (
 )
 
 func init() {
-	api.NewAnalyzerFunc = func() api.Analyzer {
-		// Create default analyzer
-		defaultAnalyzer := &api.DefaultAnalyzer{}
+	// api.NewAnalyzerFunc = func() api.Analyzer {
+	// 	// Create default analyzer
+	// 	defaultAnalyzer := &api.DefaultAnalyzer{}
 
-		// Wrap with caching (cache results for 5 minutes)
-		return api.NewCachedAnalyzer(defaultAnalyzer, 5*time.Minute)
-	}
+	// 	// Wrap with caching (cache results for 5 minutes)
+	// 	return api.NewCachedAnalyzer(defaultAnalyzer, 5*time.Minute)
+	// }
 }
 
 // @title Web Page Analyzer API
@@ -41,6 +41,7 @@ func init() {
 // @schemes http
 
 func main() {
+	api.EnableCaching = true
 	// Setup logger for the app
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelInfo,

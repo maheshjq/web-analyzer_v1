@@ -1,31 +1,39 @@
 package api
 
 import (
+	"sync"
 	"time"
 
 	"github.com/maheshjq/web-analyzer_v1/internal/analyzer"
 	"github.com/maheshjq/web-analyzer_v1/internal/models"
 )
 
+// Configuration to enable/disable caching
+var EnableCaching = true
+
 // Analyzer interface defines the behavior for a web page analyzer
 type Analyzer interface {
 	Analyze(url string) (*models.AnalysisResponse, error)
 }
 
-// analyzer factory function type
-type AnalyzerFactory func() Analyzer
+// Global singleton instance
+var singletonAnalyzer Analyzer
+var once sync.Once
 
-// Default analyzer factory variable that can be replaced in tests
-var NewAnalyzerFunc AnalyzerFactory
-
-// Initialize our factory.
-func init() {
-	// Create a cached analyzer that wraps the actual analyzer
-	NewAnalyzerFunc = func() Analyzer {
+// GetAnalyzer returns the singleton analyzer instance
+func GetAnalyzer() Analyzer {
+	once.Do(func() {
 		realAnalyzer := &DefaultAnalyzer{}
-		// Cache results for 15 minutes
-		return NewCachedAnalyzer(realAnalyzer, 15*time.Minute)
-	}
+
+		if EnableCaching {
+			// Cache results if caching is enabled
+			singletonAnalyzer = NewCachedAnalyzer(realAnalyzer, 15*time.Minute)
+		} else {
+			// Use analyzer directly if caching is disabled
+			singletonAnalyzer = realAnalyzer
+		}
+	})
+	return singletonAnalyzer
 }
 
 // DefaultAnalyzer is a wrapper around the actual analyzer implementation

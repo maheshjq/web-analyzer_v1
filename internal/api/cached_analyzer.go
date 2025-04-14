@@ -2,6 +2,7 @@
 package api
 
 import (
+	"log"
 	"sync"
 	"time"
 
@@ -47,6 +48,8 @@ func (ca *CachedAnalyzer) cleanupCache(interval time.Duration) {
 
 // Analyze implements the Analyzer interface with caching
 func (ca *CachedAnalyzer) Analyze(url string) (*models.AnalysisResponse, error) {
+	start := time.Now()
+
 	// Check cache first
 	ca.mu.RLock()
 	cached, found := ca.cache[url]
@@ -59,18 +62,28 @@ func (ca *CachedAnalyzer) Analyze(url string) (*models.AnalysisResponse, error) 
 		ca.mu.Lock()
 		ca.cacheHits++
 		ca.mu.Unlock()
+		log.Printf("CACHE HIT for %s - returning cached result (%.2f ms)",
+			url, float64(time.Since(start).Microseconds())/1000)
 		return cached.Result, nil
 	}
 
 	ca.mu.Lock()
 	ca.cacheMisses++
 	ca.mu.Unlock()
+	log.Printf("CACHE MISS for %s - performing analysis", url)
 
 	// Not in cache or expired, call the delegate
+	analysisStart := time.Now()
 	result, err := ca.delegate.Analyze(url)
+	analysisDuration := time.Since(analysisStart)
+
 	if err != nil {
+		log.Printf("ERROR analyzing %s: %v", url, err)
 		return nil, err
 	}
+
+	log.Printf("Analysis completed for %s (took %.2f sec)",
+		url, analysisDuration.Seconds())
 
 	// Store in cache
 	ca.mu.Lock()
@@ -79,6 +92,7 @@ func (ca *CachedAnalyzer) Analyze(url string) (*models.AnalysisResponse, error) 
 		ExpiresAt: now.Add(ca.ttl),
 	}
 	ca.mu.Unlock()
+	log.Printf("Cached result for %s (expires in %v)", url, ca.ttl)
 
 	return result, nil
 }
