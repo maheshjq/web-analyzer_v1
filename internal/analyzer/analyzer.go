@@ -130,29 +130,38 @@ func findElement(n *html.Node, tagName string) bool {
 
 func extractTitle(doc *html.Node) string {
 	var title string
-	var findTitle func(*html.Node)
-	findTitle = func(n *html.Node) {
+	var findTitle func(*html.Node) bool
+	findTitle = func(n *html.Node) bool {
 		if n.Type == html.ElementNode && n.Data == "title" {
-			title = getTextContent(n)
-			return
+			// Get text content with HTML tags stripped
+			var b strings.Builder
+			for c := n.FirstChild; c != nil; c = c.NextSibling {
+				if c.Type == html.TextNode {
+					b.WriteString(c.Data)
+				} else if c.Type == html.ElementNode {
+					// Recursively get text from child elements
+					var childText string
+					for child := c.FirstChild; child != nil; child = child.NextSibling {
+						if child.Type == html.TextNode {
+							childText += child.Data
+						}
+					}
+					b.WriteString(childText)
+				}
+			}
+			title = b.String()
+			return true // Stop searching after finding first title
 		}
+
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			findTitle(c)
+			if findTitle(c) {
+				return true // Propagate the "found" signal up
+			}
 		}
+		return false
 	}
 	findTitle(doc)
 	return title
-}
-
-func getTextContent(n *html.Node) string {
-	if n.Type == html.TextNode {
-		return n.Data
-	}
-	var text string
-	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		text += getTextContent(c)
-	}
-	return text
 }
 
 // countHeadings counts the number of each heading type (h1-h6)

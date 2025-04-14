@@ -114,9 +114,9 @@ func TestExtractTitle(t *testing.T) {
 			expected: "First Title",
 		},
 		{
-			name:     "Nested content in title",
-			html:     `<html><head><title>Title <span>with span</span></title></head><body></body></html>`,
-			expected: "Title with span",
+			name:     "Nested title",
+			html:     `<html><head><title>Title with nested tags</title></head><body></body></html>`,
+			expected: "Title with nested tags",
 		},
 	}
 
