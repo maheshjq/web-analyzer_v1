@@ -1,6 +1,8 @@
 package api
 
 import (
+	"time"
+
 	"github.com/maheshjq/web-analyzer_v1/internal/analyzer"
 	"github.com/maheshjq/web-analyzer_v1/internal/models"
 )
@@ -16,12 +18,13 @@ type AnalyzerFactory func() Analyzer
 // Default analyzer factory variable that can be replaced in tests
 var NewAnalyzerFunc AnalyzerFactory
 
-// Initialize the default analyzer factory
+// Initialize our factory.
 func init() {
-	// This would point to the actual analyzer in your codebase
-	// We'll need to update this to use your actual analyzer implementation
+	// Create a cached analyzer that wraps the actual analyzer
 	NewAnalyzerFunc = func() Analyzer {
-		return &DefaultAnalyzer{}
+		realAnalyzer := &DefaultAnalyzer{}
+		// Cache results for 15 minutes
+		return NewCachedAnalyzer(realAnalyzer, 15*time.Minute)
 	}
 }
 
@@ -32,7 +35,7 @@ type DefaultAnalyzer struct{}
 func (da *DefaultAnalyzer) Analyze(url string) (*models.AnalysisResponse, error) {
 	// Create an instance of your actual analyzer
 	realAnalyzer := analyzer.NewAnalyzer()
-	
+
 	// Call the actual analyze method
 	return realAnalyzer.Analyze(url)
 }
